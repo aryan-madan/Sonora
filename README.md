@@ -112,7 +112,9 @@ To provide YouTube search functionality without requiring users to generate and 
 │   └── search.ts       # Searches YouTube via Invidious
 ├── components/         # Reusable React components
 ├── contexts/           # Global state management (Auth, Music)
-├── lib/                # Helper libraries (Firebase config, DB functions)
+├── lib/                # Helper libraries
+│   ├── db.ts           # Firestore database interaction functions
+│   └── firebase.ts     # Firebase configuration and initialization
 ├── services/           # External API service clients
 ├── types/              # TypeScript type definitions
 ├── App.tsx             # Main application component
