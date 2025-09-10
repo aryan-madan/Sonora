@@ -14,72 +14,11 @@
         img-src 'self' data: https://img.youtube.com https://i.ytimg.com https://lh3.googleusercontent.com https://i.pravatar.cc;
     ">
     <title>Sonora</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="./output.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <link href="https://api.fontshare.com/v2/css?f[]=new-title@1&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-    <style>
-      .hide-scrollbar::-webkit-scrollbar {
-          display: none;
-      }
-      .hide-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-      }
-      @keyframes pulse {
-        0%, 100% { transform: scaleY(1); transform-origin: bottom; }
-        50% { transform: scaleY(0.5); transform-origin: bottom; }
-      }
-    </style>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-              heading: ['"New Title"', 'sans-serif'],
-            },
-            colors: {
-                'background': '#FFFFFF',
-                'surface': '#F9FAFB',
-                'text-primary': '#111827',
-                'text-secondary': '#6B7280',
-                'border-color': '#E5E7EB',
-                'primary': '#000000',
-                dark: {
-                    'background': '#0a0610',
-                    'surface': '#180f24',
-                    'text-primary': '#f3e8ff',
-                    'text-secondary': '#a89db9',
-                    'border-color': '#3f254d',
-                    'primary': '#D946EF',
-                    'heading-inactive': '#21182f'
-                }
-            }
-          },
-        },
-      }
-    </script>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.1.1",
-    "react/": "https://esm.sh/react@^19.1.1/",
-    "react-dom/": "https://esm.sh/react-dom@^19.1.1/",
-    "gsap": "https://esm.sh/gsap@^3.13.0",
-    "react-dom": "https://esm.sh/react-dom@^19.1.1",
-    "react-icons/pi": "https://esm.sh/react-icons@5.2.1/pi",
-    "react-icons/": "https://esm.sh/react-icons@^5.5.0/",
-    "firebase/app": "https://esm.sh/firebase@10.12.2/app",
-    "firebase/auth": "https://esm.sh/firebase@10.12.2/auth",
-    "firebase/firestore": "https://esm.sh/firebase@10.12.2/firestore",
-    "firebase/": "https://esm.sh/firebase@^12.1.0/"
-  }
-}
-</script>
 </head>
 <body class="bg-background text-text-primary dark:bg-dark-background dark:text-dark-text-primary">
     <div id="root"></div>

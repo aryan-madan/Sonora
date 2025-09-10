@@ -206,7 +206,7 @@ const AddSongModal = () => {
 };
 
 const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
-    const { user, signOut } = useAuth();
+    const { user, signOut, signInWithGoogle, loading } = useAuth();
     const { theme, toggleTheme, showCommandMenu } = useMusic();
     const [isProfileOpen, setProfileOpen] = useState(false);
 
@@ -226,26 +226,37 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
                 <button onClick={toggleTheme} className="text-text-secondary dark:text-dark-text-secondary hover:text-text-primary dark:hover:text-dark-text-primary transition-colors p-2">
                     {theme === 'light' ? <PiMoon className="h-5 w-5" /> : <PiSun className="h-5 w-5" />}
                 </button>
-                 <div className="relative">
-                    <button onClick={() => setProfileOpen(p => !p)} onBlur={() => setTimeout(() => setProfileOpen(false), 150)}>
-                        {user?.photoURL ? (
-                            <img src={user.photoURL} alt="Profile" className="h-8 w-8 rounded-full" />
-                        ) : (
-                            <PiUser className="h-8 w-8 p-1 bg-gray-200 dark:bg-dark-surface rounded-full" />
-                        )}
-                    </button>
-                    {isProfileOpen && user && (
-                         <div className="absolute top-full right-0 mt-2 w-48 bg-surface dark:bg-dark-surface shadow-lg border border-border-color dark:border-dark-border-color z-10 rounded-md overflow-hidden">
-                            <div className="p-2 border-b border-border-color dark:border-dark-border-color">
-                                <p className="font-semibold text-sm truncate">{user.displayName}</p>
-                                <p className="text-xs text-text-secondary dark:text-dark-text-secondary truncate">{user.email}</p>
+                {user ? (
+                    <div className="relative">
+                        <button onClick={() => setProfileOpen(p => !p)} onBlur={() => setTimeout(() => setProfileOpen(false), 150)}>
+                            {user.photoURL ? (
+                                <img src={user.photoURL} alt="Profile" className="h-8 w-8 rounded-full" />
+                            ) : (
+                                <PiUser className="h-8 w-8 p-1 bg-gray-200 dark:bg-dark-surface rounded-full" />
+                            )}
+                        </button>
+                        {isProfileOpen && (
+                            <div className="absolute top-full right-0 mt-2 w-48 bg-surface dark:bg-dark-surface shadow-lg border border-border-color dark:border-dark-border-color z-10 rounded-md overflow-hidden">
+                                <div className="p-2 border-b border-border-color dark:border-dark-border-color">
+                                    <p className="font-semibold text-sm truncate">{user.displayName}</p>
+                                    <p className="text-xs text-text-secondary dark:text-dark-text-secondary truncate">{user.email}</p>
+                                </div>
+                                <button onClick={signOut} className="w-full text-left flex items-center gap-2 p-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-border-color">
+                                    <PiSignOut/> Sign Out
+                                </button>
                             </div>
-                            <button onClick={signOut} className="w-full text-left flex items-center gap-2 p-2 text-sm hover:bg-gray-100 dark:hover:bg-dark-border-color">
-                                <PiSignOut/> Sign Out
-                            </button>
-                        </div>
-                    )}
-                </div>
+                        )}
+                    </div>
+                ) : (
+                    !loading && (
+                        <button
+                            onClick={signInWithGoogle}
+                            className="px-3 py-1.5 bg-text-primary dark:bg-dark-primary text-background dark:text-dark-background text-sm font-bold hover:bg-gray-700 dark:hover:bg-fuchsia-400 transition-colors rounded-md"
+                        >
+                            Sign In
+                        </button>
+                    )
+                )}
             </div>
         </header>
     );
@@ -337,7 +348,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) 
 
                 {currentSong && (
                     <div className="mt-auto pt-8 flex-shrink-0">
-                        <img src={currentSong.albumArt} alt={currentSong.title} className="w-full aspect-square object-cover shadow-lg" />
+                        <img src={currentSong.albumArt} alt={currentSong.title} className="w-full aspect-square object-cover shadow-lg rounded-xl" />
                     </div>
                 )}
             </aside>
@@ -453,7 +464,7 @@ const MainContent = () => {
                  <div className="flex justify-end mt-auto pt-4 pr-4">
                     <button
                         onClick={showCommandMenu}
-                        className="px-4 py-2 bg-text-primary dark:bg-dark-primary text-background dark:text-dark-background text-sm font-bold hover:bg-gray-700 dark:hover:bg-fuchsia-400 transition-colors"
+                        className="px-4 py-2 bg-text-primary dark:bg-dark-primary text-background dark:text-dark-background text-sm font-bold hover:bg-gray-700 dark:hover:bg-fuchsia-400 transition-colors rounded-md"
                     >
                         + Add new track
                     </button>
