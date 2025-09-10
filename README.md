@@ -1,6 +1,6 @@
 
 <div align="center">
-  <img src="/icon.svg" alt="Sonora Logo" width="100"/>
+  <img src="public/icon.svg" alt="Sonora Logo" width="100"/>
   <h1>Sonora Music</h1>
   <p>
     <strong>A beautifully crafted, minimalist music application concept designed for a seamless and aesthetically pleasing listening experience.</strong>
