@@ -251,7 +251,7 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
                     !loading && (
                         <button
                             onClick={signInWithGoogle}
-                            className="px-3 py-1.5 bg-text-primary dark:bg-dark-primary text-background dark:text-dark-background text-sm font-bold hover:bg-gray-700 dark:hover:bg-fuchsia-400 transition-colors rounded-md"
+                            className="px-3 py-1.5 bg-text-primary dark:bg-dark-primary text-background dark:text-dark-background text-sm font-bold hover:bg-gray-700 dark:hover:bg-fuchsia-400 transition-colors"
                         >
                             Sign In
                         </button>
@@ -348,7 +348,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) 
 
                 {currentSong && (
                     <div className="mt-auto pt-8 flex-shrink-0">
-                        <img src={currentSong.albumArt} alt={currentSong.title} className="w-full aspect-square object-cover shadow-lg rounded-xl" />
+                        <img src={currentSong.albumArt} alt={currentSong.title} className="w-full aspect-square object-cover shadow-lg" />
                     </div>
                 )}
             </aside>
@@ -464,7 +464,7 @@ const MainContent = () => {
                  <div className="flex justify-end mt-auto pt-4 pr-4">
                     <button
                         onClick={showCommandMenu}
-                        className="px-4 py-2 bg-text-primary dark:bg-dark-primary text-background dark:text-dark-background text-sm font-bold hover:bg-gray-700 dark:hover:bg-fuchsia-400 transition-colors rounded-md"
+                        className="px-4 py-2 bg-text-primary dark:bg-dark-primary text-background dark:text-dark-background text-sm font-bold hover:bg-gray-700 dark:hover:bg-fuchsia-400 transition-colors"
                     >
                         + Add new track
                     </button>
