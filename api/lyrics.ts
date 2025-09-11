@@ -3,7 +3,7 @@ export const config = {
 };
 
 export default async function handler(request: Request) {
-  const { searchParams } = new URL(request.url);
+  const { searchParams } = new URL(request.url, 'http://localhost');
   const trackName = searchParams.get('trackName');
   const artistName = searchParams.get('artistName');
 

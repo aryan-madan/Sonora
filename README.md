@@ -1,4 +1,3 @@
-
 <div align="center">
   <img src="public/icon.svg" alt="Sonora Logo" width="100"/>
   <h1>Sonora Music</h1>
@@ -6,38 +5,53 @@
     <strong>A beautifully crafted, minimalist music application concept designed for a seamless and aesthetically pleasing listening experience.</strong>
   </p>
   <p>Discover, organize, and enjoy music with a focus on a clean user interface and smooth animations.</p>
+
+  <p>
+    <img alt="React" src="https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB"/>
+    <img alt="TypeScript" src="https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white"/>
+    <img alt="TailwindCSS" src="https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white"/>
+    <img alt="Firebase" src="https://img.shields.io/badge/firebase-%23039BE5.svg?style=for-the-badge&logo=firebase"/>
+    <img alt="Vercel" src="https://img.shields.io/badge/vercel-%23000000.svg?style=for-the-badge&logo=vercel&logoColor=white"/>
+  </p>
 </div>
 
 ---
 
-### ✨ Core Features
+<!-- Optional: Add a screenshot or GIF of the application here -->
+<!-- <p align="center">
+  <img src="path/to/your/screenshot.png" alt="Sonora Application Screenshot" width="800"/>
+</p> -->
+
+## ✨ Core Features
 
 *   **Sleek, Minimalist UI**: A clean and intuitive interface that puts your music front and center.
 *   **Light & Dark Modes**: Automatically adapts to your system preference or toggle manually.
-*   **YouTube-Powered Streaming**: Search and stream any song directly from YouTube via a privacy-respecting proxy.
-*   **Personal Cloud Library**: Your music library, playlists, and liked songs are securely saved to your account using Firebase.
+*   **Direct YouTube Playback**: Search and play any song directly from YouTube using the Iframe Player API.
+*   **Personal Cloud Library**: Your music library, playlists, and liked songs are securely saved to your account using Firebase Authentication and Firestore.
 *   **Playlist Management**: Create custom playlists to organize your favorite tracks.
-*   **Real-time Lyrics**: View synchronized or plain text lyrics for the currently playing song.
-*   **Command Palette**: Navigate and search your library or YouTube with a powerful command menu (`⌘+K` / `Ctrl+K`).
-*   **Interactive Queue**: Easily manage what's playing next with drag-and-drop functionality.
+*   **Real-time Lyrics**: View synchronized or plain text lyrics for the currently playing song, fetched from `lrclib.net`.
+*   **Command Palette**: A powerful command menu (`⌘+K` / `Ctrl+K`) to quickly search your library or add new songs from YouTube.
+*   **Interactive Queue**: Easily manage what's playing next with drag-and-drop reordering.
 *   **Immersive Player**: A full-screen "Showcase" mode with lyrics and beautiful artwork blurring.
+*   **Lyrics Card Export**: Select your favorite lines from a song and generate a beautiful, shareable image card.
 *   **Google Authentication**: Secure and easy sign-in with your Google account.
 *   **Fully Responsive**: Enjoy a seamless experience on both desktop and mobile devices.
 
-### 🛠️ Tech Stack
+## 🛠️ Tech Stack
 
 *   **Framework**: [React](https://react.dev/)
 *   **Language**: [TypeScript](https://www.typescriptlang.org/)
 *   **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 *   **Animations**: [GSAP (GreenSock Animation Platform)](https://gsap.com/)
 *   **Backend & Database**: [Firebase](https://firebase.google.com/) (Authentication & Firestore)
-*   **Serverless Functions**: Vercel Edge Functions (for API wrappers to services like Invidious for search and Lrclib for lyrics).
+*   **Serverless Functions**: Vercel Functions for API endpoints (YouTube search, lyrics fetching).
+*   **YouTube Integration**: `play-dl` (for search) & YouTube Iframe Player API (for playback).
 *   **State Management**: React Context API
 *   **Icons**: [React Icons](https://react-icons.github.io/react-icons/) (Phosphor)
 
 ---
 
-### 🚀 Getting Started
+## 🚀 Getting Started
 
 Follow these instructions to set up and run the project locally on your machine.
 
@@ -63,23 +77,34 @@ yarn install
 pnpm install
 ```
 
-#### 4. Environment Variables
-
-This project requires a Firebase project for the backend. The application is configured to read from a local file, but you will have to provide your own keys.
-
-#### 5. Firebase Project Setup
+#### 4. Firebase Project Setup
 
 You need a Firebase project to handle authentication and the database.
 
 1.  **Create a Project**: Go to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
-2.  **Create a Web App**: Inside your project, create a new Web Application. Firebase will provide you with the configuration details (like `apiKey`, `authDomain`, etc.).
-3.  **Enable Authentication**: In the "Authentication" section, go to the "Sign-in method" tab and enable the **Google** provider.
-4.  **Create Firestore Database**: In the "Firestore Database" section, create a new database. Start in **production mode**.
-5.  **Set Firestore Security Rules**: Go to the "Rules" tab in Firestore and paste the contents of `rules.txt`. This ensures users can only access their own data.
+2.  **Create a Web App**: Inside your project, create a new Web Application. Firebase will provide you with a `firebaseConfig` object.
+3.  **Update Firebase Config**: Copy the keys from the `firebaseConfig` object provided by Firebase and paste them into the `lib/firebase.ts` file, replacing the placeholder values.
 
-#### 6. Run the Development Server
+    ```ts
+    // In lib/firebase.ts
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE_BUCKET",
+      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+      appId: "YOUR_APP_ID",
+      measurementId: "YOUR_MEASUREMENT_ID" // Optional
+    };
+    ```
 
-You can start the development server. The application will prompt you for any required API keys.
+4.  **Enable Authentication**: In the Firebase Console, go to **Authentication** -> **Sign-in method** tab and enable the **Google** provider.
+5.  **Create Firestore Database**: Go to the **Firestore Database** section and create a new database. Start in **production mode**.
+6.  **Set Firestore Security Rules**: In Firestore, go to the **Rules** tab and paste the contents of `rules.txt` from this repository. This ensures users can only access their own data.
+
+#### 5. Run the Development Server
+
+You can start the development server.
 
 ```bash
 npm run dev
@@ -89,17 +114,7 @@ yarn dev
 pnpm dev
 ```
 
-The application should now be running at `http://localhost:5173`.
-
----
-
-### 🔎 YouTube Search via Invidious
-
-To provide YouTube search functionality without requiring users to generate and manage a YouTube Data API key, Sonora uses a serverless function that queries a list of public [Invidious instances](https://invidious.io/). This approach offers several advantages:
-
-*   **No API Key Needed**: Simplifies setup and avoids quota limitations.
-*   **Enhanced Privacy**: Invidious acts as a proxy, protecting user privacy.
-*   **Resilience**: The app cycles through multiple instances, ensuring the search feature remains available even if one instance goes down.
+The application should now be running locally, typically at `http://localhost:5173`.
 
 ---
 
@@ -109,7 +124,7 @@ To provide YouTube search functionality without requiring users to generate and 
 /
 ├── api/                # Serverless Functions (API wrappers)
 │   ├── lyrics.ts       # Fetches lyrics from lrclib.net
-│   └── search.ts       # Searches YouTube via Invidious
+│   └── search.ts       # Searches YouTube
 ├── components/         # Reusable React components
 ├── contexts/           # Global state management (Auth, Music)
 ├── lib/                # Helper libraries
@@ -123,21 +138,21 @@ To provide YouTube search functionality without requiring users to generate and 
 
 ---
 
-### 🚀 Deployment
+### ☁️ Deployment
 
 The recommended way to deploy Sonora is with [Vercel](https://vercel.com/), which provides seamless integration with serverless functions.
 
 1.  Push your code to a Git repository (GitHub, GitLab, etc.).
 2.  Sign up for a Vercel account and connect it to your Git provider.
-3.  Import your project repository.
-4.  Configure the Environment Variables in the Vercel project settings. You will need to add all the Firebase keys here.
+3.  Import your project repository into Vercel.
+4.  **Important**: Vercel builds the project from scratch. You should **not** commit your Firebase API keys directly. Instead, configure them as **Environment Variables** in the Vercel project settings. You will need to modify `lib/firebase.ts` to read from `process.env`.
 5.  Click "Deploy". Vercel will automatically build and deploy your application and the serverless functions.
 
 ---
 
 ### 🙏 Acknowledgements
 
-*   **[YouTube](https://www.youtube.com/)** & **[Invidious](https://invidious.io/)** for the music streaming and search.
-*   **[lrclib.net](https://lrclib.net/)** for providing song lyrics.
-*   **[GSAP](https://gsap.com/)** for the incredible animation library.
+*   **[YouTube](https://www.youtube.com/)** for the music streaming and search capabilities.
+*   **[lrclib.net](https://lrclib.net/)** for providing an excellent API for song lyrics.
+*   **[GSAP](https://gsap.com/)** for the incredible animation library that brings the UI to life.
 *   **[Fontshare](https://www.fontshare.com/)** for the beautiful "New Title" font.

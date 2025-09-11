@@ -1,23 +1,17 @@
-import React, { createContext, useContext, useState, ReactNode, useRef, useEffect, useCallback } from 'react';
-import { Song, Playlist, ActiveView, ToastMessage, ContextMenuState, YouTubeSearchResult } from '../types';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback, useRef } from 'react';
+import { Song, Playlist, ActiveView, ContextMenuState, YouTubeSearchResult } from '../types';
 import * as db from '../lib/db';
 import { useAuth } from './Auth';
 
 type RepeatMode = 'none' | 'one' | 'all';
 type Theme = 'light' | 'dark';
 
-interface YTPlayer {
-    loadVideoById: (id: string) => void;
-    stopVideo: () => void;
-    playVideo: () => void;
-    pauseVideo: () => void;
-    seekTo: (seconds: number, allowSeekAhead: boolean) => void;
-    getCurrentTime: () => number;
-    getDuration: () => number;
-    setVolume: (volume: number) => void;
-    mute: () => void;
-    unMute: () => void;
-    getPlayerState: () => number;
+// add YT Player types to the global window object
+declare global {
+    interface Window {
+        onYouTubeIframeAPIReady: () => void;
+        YT: any;
+    }
 }
 
 export interface MusicContextType {
@@ -34,7 +28,6 @@ export interface MusicContextType {
     volume: number;
     isMuted: boolean;
     theme: Theme;
-    toasts: ToastMessage[];
     toggleTheme: () => void;
     loadLibrary: () => void;
     createPlaylist: (name: string) => void;
@@ -48,8 +41,6 @@ export interface MusicContextType {
     playNext: () => void;
     playPrev: () => void;
     seek: (time: number) => void;
-    addToast: (message: string, type?: 'success' | 'error') => void;
-    removeToast: (id: number) => void;
     toggleShuffle: () => void;
     toggleRepeatMode: () => void;
     setVolume: (volume: number) => void;
@@ -100,7 +91,6 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [repeatMode, setRepeatMode] = useState<RepeatMode>('none');
     const [volume, setVolumeState] = useState(1);
     const [isMuted, setIsMuted] = useState(false);
-    const [toasts, setToasts] = useState<ToastMessage[]>([]);
     const [theme, setTheme] = useState<Theme>('light');
     
     const [isCreatePlaylistModalVisible, setIsCreatePlaylistModalVisible] = useState(false);
@@ -111,51 +101,8 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [isAddSongModalVisible, setIsAddSongModalVisible] = useState(false);
     const [songToAdd, setSongToAdd] = useState<YouTubeSearchResult | null>(null);
 
-    const [ytPlayer, setYtPlayer] = useState<YTPlayer | null>(null);
-    const [isYtPlayerReady, setYtPlayerReady] = useState(false);
-    const [isSongEnding, setIsSongEnding] = useState(false);
-    const progressIntervalRef = useRef<number | null>(null);
-
-     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault();
-                setIsCommandMenuVisible(prev => !prev);
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
-
-    useEffect(() => {
-        const storedTheme = localStorage.getItem('sonora-theme') as Theme | null;
-        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const initialTheme = storedTheme || (prefersDark ? 'dark' : 'light');
-        setTheme(initialTheme);
-    }, []);
-
-    useEffect(() => {
-        if (theme === 'dark') {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-        localStorage.setItem('sonora-theme', theme);
-    }, [theme]);
-
-    const toggleTheme = () => {
-        setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
-    };
-    
-    const removeToast = useCallback((id: number) => {
-        setToasts(prev => prev.filter(toast => toast.id !== id));
-    }, []);
-
-    const addToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
-        const id = Date.now();
-        setToasts(prev => [...prev, { id, message, type }]);
-    }, []);
+    const playerRef = useRef<any>(null);
+    const [isPlayerReady, setIsPlayerReady] = useState(false);
 
     const loadLibrary = useCallback(async () => {
         if (!user) {
@@ -164,94 +111,76 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             setLikedSongs([]);
             return;
         };
+        
         const songs = await db.getAllSongs();
         const pls = await db.getAllPlaylists();
         const liked = await db.getLikedSongs();
-        setAllSongs(songs);
-        setPlaylists(pls);
-        setLikedSongs(liked);
+    
+        const migrationKey = 'sonora-thumbnail-migration-maxres-v1-completed';
+        if (!localStorage.getItem(migrationKey)) {
+            console.log("Checking for thumbnail migration to maxresdefault...");
+    
+            const updateArt = (song: Song): Song => ({ ...song, albumArt: `https://img.youtube.com/vi/${song.id}/maxresdefault.jpg` });
+            const needsMigration = (song: Song) => !song.albumArt || !song.albumArt.includes('maxresdefault.jpg');
+    
+            if (songs.some(needsMigration) || liked.some(needsMigration) || pls.some(p => p.songs.some(needsMigration))) {
+                console.log("Applying thumbnail migrations locally and saving to DB...");
+    
+                // Update state immediately for responsiveness
+                const updatedSongs = songs.map(s => needsMigration(s) ? updateArt(s) : s);
+                const updatedLiked = liked.map(s => needsMigration(s) ? updateArt(s) : s);
+                const updatedPlaylists = pls.map(p => ({
+                    ...p,
+                    songs: p.songs.map(s => needsMigration(s) ? updateArt(s) : s)
+                }));
+                
+                setAllSongs(updatedSongs);
+                setPlaylists(updatedPlaylists);
+                setLikedSongs(updatedLiked);
+    
+                // Fire and forget DB updates
+                const songsToUpdate = updatedSongs.filter((s, i) => s.albumArt !== songs[i].albumArt);
+                const likedToUpdate = updatedLiked.filter((s, i) => s.albumArt !== liked[i].albumArt);
+                const playlistsToUpdate = updatedPlaylists.filter((p, i) => JSON.stringify(p.songs) !== JSON.stringify(pls[i].songs));
+    
+                Promise.all([
+                    ...songsToUpdate.map(s => db.saveSong(s)),
+                    ...likedToUpdate.map(s => db.likeSong(s)),
+                    ...playlistsToUpdate.map(p => db.savePlaylist(p)),
+                ]).then(() => {
+                    console.log("DB migration complete.");
+                }).catch(err => {
+                    console.error("DB migration failed:", err);
+                    localStorage.removeItem(migrationKey);
+                });
+    
+            } else {
+                console.log("No thumbnail migration needed.");
+                setAllSongs(songs);
+                setPlaylists(pls);
+                setLikedSongs(liked);
+            }
+            
+            localStorage.setItem(migrationKey, 'true');
+        } else {
+            setAllSongs(songs);
+            setPlaylists(pls);
+            setLikedSongs(liked);
+        }
     }, [user]);
 
-    useEffect(() => {
-        if (!authLoading) {
-            loadLibrary();
-        }
-    }, [user, authLoading, loadLibrary]);
+    const findCurrentSongIndex = useCallback(() => {
+        if (!currentSong) return -1;
+        return currentQueue.findIndex(s => s.id === currentSong.id);
+    }, [currentQueue, currentSong]);
     
-    const createPlaylist = async (name: string) => {
-        if (!user) {
-            addToast('You must be signed in to create playlists.', 'error');
-            return;
-        }
-        const newPlaylist: Playlist = {
-            id: `playlist-${Date.now()}`,
-            name,
-            songs: [],
-        };
-        await db.savePlaylist(newPlaylist);
-        setPlaylists(prev => [...prev, newPlaylist]);
-        addToast(`Playlist "${name}" created`);
-    };
-
-    const deletePlaylist = async (playlistId: string) => {
-        const playlistToDelete = playlists.find(p => p.id === playlistId);
-        if (!playlistToDelete) return;
-
-        if (window.confirm(`Are you sure you want to delete "${playlistToDelete.name}"?`)) {
-            await db.deletePlaylist(playlistId);
-            setPlaylists(prev => prev.filter(p => p.id !== playlistId));
-
-            if (activeView.type === 'playlist' && activeView.id === playlistId) {
-                setActiveView({ type: 'all_songs' });
-            }
-            addToast(`Playlist "${playlistToDelete.name}" deleted`);
-        }
-    };
-
-    const addSongToPlaylist = async (playlistId: string, song: Song) => {
-        const playlist = playlists.find(p => p.id === playlistId);
-        if (playlist && !playlist.songs.some(s => s.id === song.id)) {
-            const updatedPlaylist = { ...playlist, songs: [...playlist.songs, song] };
-            await db.savePlaylist(updatedPlaylist);
-            setPlaylists(prev => prev.map(p => p.id === playlistId ? updatedPlaylist : p));
-            addToast(`Added to "${playlist.name}"`);
-        }
-    };
-
-    const removeSongFromPlaylist = async (playlistId: string, songId: string) => {
-        const playlist = playlists.find(p => p.id === playlistId);
-        if (playlist) {
-            const updatedPlaylist = {
-                ...playlist,
-                songs: playlist.songs.filter(s => s.id !== songId)
-            };
-            await db.savePlaylist(updatedPlaylist);
-            setPlaylists(prev => prev.map(p => p.id === playlistId ? updatedPlaylist : p));
-
-            const song = allSongs.find(s => s.id === songId);
-            if (song) {
-                addToast(`Removed "${song.title}" from "${playlist.name}"`);
+    const playSong = useCallback((song: Song, queue: Song[]) => {
+        if (playerRef.current?.getPlayerState) {
+            if (currentSong?.id !== song.id && playerRef.current.getPlayerState() !== -1) {
+                playerRef.current.stopVideo();
             }
         }
-    };
-    
-    const likeSong = async (song: Song) => {
-        if (!user) {
-            addToast('You must be signed in to like songs.', 'error');
-            return;
-        }
-        const isLiked = likedSongs.some(s => s.id === song.id);
-        if (isLiked) {
-            await db.unlikeSong(song.id);
-            setLikedSongs(prev => prev.filter(s => s.id !== song.id));
-        } else {
-            await db.likeSong(song);
-            setLikedSongs(prev => [...prev, song]);
-        }
-    };
-    
-    const playSong = useCallback(async (song: Song, queue: Song[]) => {
-        setIsSongEnding(false);
+        
         setCurrentSong(song);
     
         let finalQueue = [...queue];
@@ -273,36 +202,15 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             }
         }
         setCurrentQueue(finalQueue);
-    
-        if (!isYtPlayerReady) {
-            addToast('Player is not ready yet', 'error');
-            return;
-        }
-        ytPlayer?.loadVideoById(song.id);
-    }, [ytPlayer, isYtPlayerReady, isShuffle, addToast]);
-
-    const togglePlay = useCallback(() => {
-        if (!currentSong || !ytPlayer) return;
-        if (isPlaying) ytPlayer.pauseVideo();
-        else ytPlayer.playVideo();
-    }, [ytPlayer, isPlaying, currentSong]);
-    
-    const findCurrentSongIndex = useCallback(() => {
-        if (!currentSong) return -1;
-        return currentQueue.findIndex(s => s.id === currentSong.id);
-    }, [currentQueue, currentSong]);
-
-    const seek = useCallback((time: number) => {
-        ytPlayer?.seekTo(time / 1000, true);
-    }, [ytPlayer]);
+    }, [isShuffle, currentSong]);
 
     const playNext = useCallback(() => {
         const currentIndex = findCurrentSongIndex();
         if (currentIndex === -1) return;
         
-        if (repeatMode === 'one') {
-             seek(0);
-             ytPlayer?.playVideo();
+        if (repeatMode === 'one' && playerRef.current) {
+             playerRef.current.seekTo(0);
+             playerRef.current.playVideo();
              return;
         }
 
@@ -312,33 +220,44 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             else { setIsPlaying(false); return; }
         }
         playSong(currentQueue[nextIndex], currentQueue);
-    }, [findCurrentSongIndex, currentQueue, playSong, repeatMode, ytPlayer, seek]);
+    }, [findCurrentSongIndex, currentQueue, playSong, repeatMode]);
+
+    const togglePlay = useCallback(() => {
+        if (!currentSong || !playerRef.current) return;
+        if (isPlaying) {
+            playerRef.current.pauseVideo();
+        } else {
+            playerRef.current.playVideo();
+        }
+    }, [isPlaying, currentSong]);
 
     const playPrev = useCallback(() => {
+        if (playerRef.current && playerRef.current.getCurrentTime() > 3) {
+            playerRef.current.seekTo(0);
+            return;
+        }
+
         const currentIndex = findCurrentSongIndex();
         if (currentIndex > 0) {
             playSong(currentQueue[currentIndex - 1], currentQueue);
         } else if (repeatMode === 'all' && currentQueue.length > 0) {
             playSong(currentQueue[currentQueue.length - 1], currentQueue);
+        } else if (playerRef.current) {
+            playerRef.current.seekTo(0);
         }
     }, [findCurrentSongIndex, currentQueue, playSong, repeatMode]);
 
-    const setVolume = (vol: number) => {
-        setVolumeState(vol);
-        ytPlayer?.setVolume(vol * 100);
-        if (vol > 0 && isMuted) {
-            toggleMute();
+    const seek = useCallback((time: number) => {
+        if (playerRef.current?.seekTo) {
+            playerRef.current.seekTo(time / 1000, true);
         }
-    };
-    
-    const toggleMute = () => {
-        setIsMuted(prev => {
-            const newMuted = !prev;
-            if(newMuted) ytPlayer?.mute(); else ytPlayer?.unMute();
-            return newMuted;
-        });
-    };
+    }, []);
 
+    const mediaSessionSeek = useCallback((details: any) => {
+        if (details.fastSeek || details.seekTime === null || !playerRef.current) return;
+        playerRef.current.seekTo(details.seekTime, true);
+    }, []);
+    
     const updateSongDuration = useCallback(async (songId: string, duration: number) => {
         const songToUpdate = allSongs.find(s => s.id === songId);
         if (songToUpdate && duration > 0 && songToUpdate.duration !== duration) {
@@ -356,6 +275,245 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             }
         }
     }, [allSongs, currentSong]);
+    
+    const playNextRef = useRef(playNext);
+    useEffect(() => {
+        playNextRef.current = playNext;
+    }, [playNext]);
+
+    useEffect(() => {
+        const onPlayerReady = () => setIsPlayerReady(true);
+        
+        const onPlayerStateChange = (event: any) => {
+            switch(event.data) {
+                case window.YT.PlayerState.PLAYING: setIsPlaying(true); break;
+                case window.YT.PlayerState.PAUSED: setIsPlaying(false); break;
+                case window.YT.PlayerState.ENDED: playNextRef.current(); break;
+                default: break;
+            }
+        };
+
+        const onPlayerError = (event: any) => {
+            console.error("YouTube Player Error:", event.data);
+        };
+
+        const initializePlayer = () => {
+            if (!window.YT || !window.YT.Player || playerRef.current) return;
+            playerRef.current = new window.YT.Player('youtube-player', {
+                height: '0',
+                width: '0',
+                playerVars: { playsinline: 1 },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange,
+                    'onError': onPlayerError,
+                }
+            });
+        };
+
+        if (!window.YT) {
+            const tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            document.head.appendChild(tag);
+            window.onYouTubeIframeAPIReady = initializePlayer;
+        } else {
+            initializePlayer();
+        }
+    }, []);
+
+    useEffect(() => {
+        if (isPlayerReady && currentSong && playerRef.current?.loadVideoById) {
+            const currentVideoUrl = playerRef.current.getVideoUrl();
+            if (!currentVideoUrl || !currentVideoUrl.includes(currentSong.id)) {
+                playerRef.current.loadVideoById(currentSong.id);
+            }
+        }
+    }, [currentSong, isPlayerReady]);
+    
+    useEffect(() => {
+        let interval: number | null = null;
+        if (isPlaying && playerRef.current?.getDuration) {
+            interval = window.setInterval(() => {
+                const currentTime = playerRef.current.getCurrentTime() * 1000;
+                const duration = playerRef.current.getDuration() * 1000;
+                if (!isNaN(duration) && duration > 0) {
+                    setProgress({ currentTime, duration });
+                    if (currentSong && currentSong.duration <= 1000) {
+                        updateSongDuration(currentSong.id, duration);
+                    }
+                }
+            }, 500);
+        }
+        return () => {
+            if (interval) window.clearInterval(interval);
+        };
+    }, [isPlaying, currentSong, updateSongDuration]);
+    
+     useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                setIsCommandMenuVisible(prev => !prev);
+            }
+             if (e.target === document.body && e.key === ' ') {
+                e.preventDefault();
+                togglePlay();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [togglePlay]);
+
+    useEffect(() => {
+        const storedTheme = localStorage.getItem('sonora-theme') as Theme | null;
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const initialTheme = storedTheme || (prefersDark ? 'dark' : 'light');
+        setTheme(initialTheme);
+    }, []);
+
+    useEffect(() => {
+        if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+        localStorage.setItem('sonora-theme', theme);
+    }, [theme]);
+
+    useEffect(() => {
+        if (!authLoading) {
+            loadLibrary();
+        }
+    }, [user, authLoading, loadLibrary]);
+    
+    useEffect(() => {
+        if (!('mediaSession' in navigator)) return;
+    
+        if (!currentSong) {
+            navigator.mediaSession.metadata = null;
+            navigator.mediaSession.playbackState = 'none';
+            return;
+        }
+    
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: currentSong.title,
+            artist: currentSong.artist,
+            album: 'Sonora',
+            artwork: [
+                { src: `https://img.youtube.com/vi/${currentSong.id}/maxresdefault.jpg`, sizes: '1280x720', type: 'image/jpeg' },
+            ]
+        });
+    
+        navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+    
+        navigator.mediaSession.setActionHandler('play', togglePlay);
+        navigator.mediaSession.setActionHandler('pause', togglePlay);
+        navigator.mediaSession.setActionHandler('previoustrack', playPrev);
+        navigator.mediaSession.setActionHandler('nexttrack', playNext);
+        navigator.mediaSession.setActionHandler('seekto', mediaSessionSeek);
+    
+        return () => {
+             if (!('mediaSession' in navigator)) return;
+            navigator.mediaSession.setActionHandler('play', null);
+            navigator.mediaSession.setActionHandler('pause', null);
+            navigator.mediaSession.setActionHandler('previoustrack', null);
+            navigator.mediaSession.setActionHandler('nexttrack', null);
+            navigator.mediaSession.setActionHandler('seekto', null);
+        }
+    }, [currentSong, isPlaying, togglePlay, playPrev, playNext, mediaSessionSeek]);
+
+    const toggleTheme = () => {
+        setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
+    };
+    
+    const createPlaylist = async (name: string) => {
+        if (!user) {
+            console.error('You must be signed in to create playlists.');
+            return;
+        }
+        const newPlaylist: Playlist = {
+            id: `playlist-${Date.now()}`,
+            name,
+            songs: [],
+        };
+        await db.savePlaylist(newPlaylist);
+        setPlaylists(prev => [...prev, newPlaylist]);
+    };
+
+    const deletePlaylist = async (playlistId: string) => {
+        const playlistToDelete = playlists.find(p => p.id === playlistId);
+        if (!playlistToDelete) return;
+
+        if (window.confirm(`Are you sure you want to delete "${playlistToDelete.name}"?`)) {
+            await db.deletePlaylist(playlistId);
+            setPlaylists(prev => prev.filter(p => p.id !== playlistId));
+
+            if (activeView.type === 'playlist' && activeView.id === playlistId) {
+                setActiveView({ type: 'all_songs' });
+            }
+        }
+    };
+
+    const addSongToPlaylist = async (playlistId: string, song: Song) => {
+        const playlist = playlists.find(p => p.id === playlistId);
+        if (playlist && !playlist.songs.some(s => s.id === song.id)) {
+            const updatedPlaylist = { ...playlist, songs: [...playlist.songs, song] };
+            await db.savePlaylist(updatedPlaylist);
+            setPlaylists(prev => prev.map(p => p.id === playlistId ? updatedPlaylist : p));
+        }
+    };
+
+    const removeSongFromPlaylist = async (playlistId: string, songId: string) => {
+        const playlist = playlists.find(p => p.id === playlistId);
+        if (playlist) {
+            const updatedPlaylist = {
+                ...playlist,
+                songs: playlist.songs.filter(s => s.id !== songId)
+            };
+            await db.savePlaylist(updatedPlaylist);
+            setPlaylists(prev => prev.map(p => p.id === playlistId ? updatedPlaylist : p));
+        }
+    };
+    
+    const likeSong = async (song: Song) => {
+        if (!user) {
+            console.error('You must be signed in to like songs.');
+            return;
+        }
+        const isLiked = likedSongs.some(s => s.id === song.id);
+        if (isLiked) {
+            await db.unlikeSong(song.id);
+            setLikedSongs(prev => prev.filter(s => s.id !== song.id));
+        } else {
+            await db.likeSong(song);
+            setLikedSongs(prev => [...prev, song]);
+        }
+    };
+
+    const setVolume = (vol: number) => {
+        if (playerRef.current?.setVolume) {
+            playerRef.current.setVolume(vol * 100);
+        }
+        setVolumeState(vol);
+        if (vol > 0 && isMuted) {
+            setIsMuted(false);
+            if (playerRef.current?.unMute) {
+                playerRef.current.unMute();
+            }
+        }
+    };
+    
+    const toggleMute = () => {
+        setIsMuted(prev => {
+            const newMuted = !prev;
+            if (playerRef.current) {
+               if (newMuted) playerRef.current.mute();
+               else playerRef.current.unMute();
+            }
+            return newMuted;
+        });
+    };
 
     const updateSongLyrics = useCallback(async (songId: string, lyrics: string) => {
         const songToUpdate = allSongs.find(s => s.id === songId);
@@ -375,86 +533,32 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
     }, [allSongs, currentSong]);
     
-    const onYtPlayerStateChange = useCallback((event: any) => {
-        const ENDED = 0, PLAYING = 1, PAUSED = 2, CUED = 5;
-        switch(event.data) {
-            case PLAYING:
-                setIsPlaying(true);
-                const duration = ytPlayer?.getDuration() ?? 0;
-                if (currentSong && currentSong.duration === 0 && duration > 0) {
-                    updateSongDuration(currentSong.id, duration * 1000);
-                }
-                setProgress(p => ({ ...p, duration: duration * 1000 }));
-                break;
-            case PAUSED: 
-                setIsPlaying(false); 
-                break;
-            case ENDED: 
-                setIsPlaying(false);
-                break;
-            case CUED:
-                ytPlayer?.playVideo();
-                break;
-        }
-    }, [ytPlayer, currentSong, updateSongDuration]);
-    
-    useEffect(() => {
-        if (isPlaying && ytPlayer) {
-            progressIntervalRef.current = window.setInterval(() => {
-                const currentTime = ytPlayer.getCurrentTime() ?? 0;
-                const duration = ytPlayer.getDuration() ?? 0;
-
-                setProgress({
-                    currentTime: currentTime * 1000,
-                    duration: duration * 1000,
-                });
-
-                if (duration > 0 && currentTime >= duration - 0.5 && !isSongEnding) {
-                    setIsSongEnding(true); 
-                    if (repeatMode === 'one') {
-                        ytPlayer.seekTo(0, true);
-                        setIsSongEnding(false); 
-                    } else {
-                        playNext();
-                    }
-                }
-            }, 500);
-        } else if (progressIntervalRef.current) {
-            clearInterval(progressIntervalRef.current);
-        }
-        return () => {
-            if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-        };
-    }, [isPlaying, ytPlayer, repeatMode, isSongEnding, playNext]);
-
     const addSongToLibrary = useCallback(async (songDetails: { id: string; title: string; artist: string; duration: number; }): Promise<Song> => {
         if (!user) {
-            addToast('You must be signed in to add songs to your library.', 'error');
+            console.error('You must be signed in to add songs to your library.');
             throw new Error("User not signed in");
         }
         const existingSong = allSongs.find(s => s.id === songDetails.id);
         if (existingSong) {
-            addToast(`"${existingSong.title}" is already in your library.`, 'error');
+            console.error(`"${existingSong.title}" is already in your library.`);
             throw new Error("Song already exists");
         }
     
         const newSong: Song = {
             ...songDetails,
-            albumArt: `https://img.youtube.com/vi/${songDetails.id}/hqdefault.jpg`,
+            albumArt: `https://img.youtube.com/vi/${songDetails.id}/maxresdefault.jpg`,
         };
     
         await db.saveSong(newSong);
         setAllSongs(prev => [...prev, newSong]);
-        addToast(`"${newSong.title}" added to your library.`);
         return newSong;
-    }, [allSongs, addToast, user]);
+    }, [allSongs, user]);
 
     const toggleShuffle = () => {
         const newShuffleState = !isShuffle;
         setIsShuffle(newShuffleState);
     
         if (newShuffleState) {
-            // Shuffle the upcoming songs
             const currentIndex = findCurrentSongIndex();
             if (currentIndex !== -1) {
                 const nowPlaying = currentQueue[currentIndex];
@@ -463,8 +567,6 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                     const j = Math.floor(Math.random() * (i + 1));
                     [upcomingSongs[i], upcomingSongs[j]] = [upcomingSongs[j], upcomingSongs[i]];
                 }
-                const newQueue = [...currentQueue.slice(0, currentIndex), nowPlaying, ...upcomingSongs];
-                 // The current song might not be at the start of the array, so we adjust based on its actual position.
                 const finalQueue = [
                     ...currentQueue.slice(0, currentIndex + 1),
                     ...upcomingSongs
@@ -472,7 +574,6 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 setCurrentQueue(finalQueue);
             }
         } else {
-            // Revert to original order
             const sourceList = (() => {
                 if (activeView.type === 'playlist') {
                     return playlists.find(p => p.id === activeView.id)?.songs || allSongs;
@@ -505,8 +606,8 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const wasPlaying = currentSong?.id === songId;
         const oldQueueIndex = findCurrentSongIndex();
 
-        if (wasPlaying) {
-             ytPlayer?.stopVideo();
+        if (wasPlaying && playerRef.current) {
+            playerRef.current.stopVideo();
         }
         
         await db.deleteSong(songId);
@@ -537,7 +638,6 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 setIsPlaying(false);
             }
         }
-        addToast(`"${songToDelete.title}" deleted from library.`);
     };
 
     const setQueue = (newQueue: Song[]) => {
@@ -549,16 +649,13 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const addSongToQueue = (song: Song) => {
         if (currentQueue.some(s => s.id === song.id)) {
-            addToast(`"${song.title}" is already in the queue.`);
             return;
         }
         setCurrentQueue(prev => [...prev, song]);
-        addToast(`"${song.title}" added to queue.`);
     };
 
     const playSongNext = (song: Song) => {
         if (currentQueue.some(s => s.id === song.id)) {
-            addToast(`"${song.title}" is already in the queue.`);
             return;
         }
         const currentIndex = findCurrentSongIndex();
@@ -568,8 +665,6 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
         if (!isPlaying && !currentSong) {
             playSong(song, newQueue);
-        } else {
-            addToast(`"${song.title}" will play next.`);
         }
     };
 
@@ -584,7 +679,6 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         } else {
             setCurrentQueue([]);
         }
-        addToast("Queue cleared.");
     };
 
     const showContextMenu = (song: Song, x: number, y: number) => {
@@ -605,10 +699,10 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const value = {
         playlists, likedSongs, allSongs, currentSong, isPlaying, activeView,
         currentQueue, progress, isShuffle, repeatMode, volume, isMuted,
-        theme, toggleTheme, toasts,
+        theme, toggleTheme,
         createPlaylist, deletePlaylist, addSongToPlaylist, removeSongFromPlaylist, 
         likeSong, playSong, togglePlay,
-        setActiveView, playNext, playPrev, seek, loadLibrary, addToast, removeToast,
+        setActiveView, playNext, playPrev, seek, loadLibrary,
         toggleShuffle, toggleRepeatMode, setVolume, toggleMute, 
         addSongToLibrary, updateSongDuration, updateSongLyrics,
         deleteSongFromLibrary,
@@ -627,11 +721,10 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         hideQueue: () => setIsQueueVisible(false),
         contextMenu, showContextMenu, hideContextMenu,
         isAddSongModalVisible, songToAdd, showAddSongModal, hideAddSongModal,
-        setPlayer: setYtPlayer, setPlayerReady: setYtPlayerReady, onPlayerStateChange: onYtPlayerStateChange,
     };
 
     return (
-        <MusicContext.Provider value={value as any}>
+        <MusicContext.Provider value={value}>
             {children}
         </MusicContext.Provider>
     );

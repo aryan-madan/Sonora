@@ -7,7 +7,7 @@ import { gsap } from 'gsap';
 export default function Queue() {
     const { 
         currentSong, currentQueue, playSong, removeSongFromQueue, setQueue, clearQueue,
-        isQueueVisible, hideQueue, isShowcaseVisible
+        isQueueVisible, hideQueue
     } = useMusic();
     
     const panelRef = useRef<HTMLDivElement>(null);
@@ -20,7 +20,7 @@ export default function Queue() {
     const [isLg, setIsLg] = useState(window.innerWidth >= 1024);
     const [portalElement, setPortalElement] = useState<HTMLElement | null>(null);
 
-    const isOverlayMode = isMobile || (!isMobile && isShowcaseVisible);
+    const isOverlayMode = isMobile;
 
     useEffect(() => {
         setPortalElement(document.body);
@@ -152,7 +152,9 @@ export default function Queue() {
                     <div>
                         <h3 className="text-xs font-bold text-text-secondary dark:text-dark-text-secondary uppercase tracking-wider mb-2">Now Playing</h3>
                         <div className="flex items-center p-3 bg-gray-50 dark:bg-dark-background rounded-lg">
-                            <img src={currentSong.albumArt} alt={currentSong.title} className="w-12 h-12 object-cover mr-4 rounded-md" />
+                            <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0 mr-4">
+                                <img src={currentSong.albumArt} alt={currentSong.title} className="w-full h-full object-cover" />
+                            </div>
                             <div className="flex-grow overflow-hidden">
                                 <p className="font-semibold text-text-primary dark:text-dark-text-primary truncate">{currentSong.title}</p>
                                 <p className="text-text-secondary dark:text-dark-text-secondary text-sm truncate">{currentSong.artist}</p>
@@ -178,8 +180,8 @@ export default function Queue() {
                                     className="group flex items-center p-2 hover:bg-gray-50 dark:hover:bg-dark-border-color rounded-lg transition-colors"
                                 >
                                     <PiDotsSixVertical className="w-5 h-5 text-text-secondary dark:text-dark-text-secondary mr-2 cursor-grab flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    <div className="w-10 h-10 mr-4 cursor-pointer flex-shrink-0" onClick={() => playSong(song, currentQueue)}>
-                                        <img src={song.albumArt} alt={song.title} className="w-full h-full object-cover rounded-md" />
+                                    <div className="w-10 h-10 mr-4 cursor-pointer flex-shrink-0 rounded-md overflow-hidden" onClick={() => playSong(song, currentQueue)}>
+                                        <img src={song.albumArt} alt={song.title} className="w-full h-full object-cover" />
                                     </div>
                                     <div className="flex-grow cursor-pointer overflow-hidden" onClick={() => playSong(song, currentQueue)}>
                                         <p className="font-medium text-text-primary dark:text-dark-text-primary truncate">{song.title}</p>

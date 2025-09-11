@@ -141,13 +141,13 @@ export default function Command({ isVisible, onClose }: CommandMenuProps) {
 
     const commandContent = (
         <>
-            <div className="p-3 border-b border-border-color dark:border-dark-border-color flex items-center gap-3 flex-shrink-0">
-                <PiMagnifyingGlass className="text-text-secondary dark:text-dark-text-secondary h-5 w-5" />
-                <input ref={inputRef} type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search songs, artists..." className="w-full bg-transparent focus:outline-none placeholder-text-secondary dark:placeholder-dark-text-secondary" />
+            <div className="p-4 border-b border-border-color dark:border-dark-border-color flex items-center gap-4 flex-shrink-0">
+                <PiMagnifyingGlass className="text-text-secondary dark:text-dark-text-secondary h-6 w-6" />
+                <input ref={inputRef} type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search songs, artists..." className="w-full bg-transparent focus:outline-none placeholder-text-secondary dark:placeholder-dark-text-secondary text-lg" />
                 <button onClick={onClose} className="p-1 text-text-secondary dark:text-dark-text-secondary hover:text-text-primary dark:hover:text-dark-text-primary rounded-full hover:bg-gray-100 dark:hover:bg-dark-border-color"><PiX className="h-5 w-5" /></button>
             </div>
             <div className="flex-grow overflow-y-auto hide-scrollbar min-h-[200px]">
-                <ul className="p-2">
+                <ul className="p-4">
                      {!hasQuery && <li className="text-center text-text-secondary dark:text-dark-text-secondary p-8">Search your library or add new songs from YouTube.</li>}
                     {isLoading && <li className="flex justify-center items-center p-8"><PiSpinnerGap className="animate-spin h-6 w-6 text-text-secondary dark:text-dark-text-secondary" /></li>}
                     {hasQuery && !isLoading && !hasLibraryResults && !hasYoutubeResults &&
@@ -155,17 +155,27 @@ export default function Command({ isVisible, onClose }: CommandMenuProps) {
                     }
                     {hasLibraryResults && (
                         <>
-                            <li className="px-2 pt-2 pb-1 text-xs font-bold text-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">In Your Library</li>
+                            <li className="px-3 pt-2 pb-1 text-xs font-bold text-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">In Your Library</li>
                             {libraryResults.map(song => (
-                                <li key={song.id}><button onClick={() => handlePlaySong(song)} className="w-full text-left p-2 hover:bg-gray-100 dark:hover:bg-dark-border-color flex items-center gap-3 rounded-md"><img src={song.albumArt} alt={song.title} className="w-10 h-10 object-cover rounded" /><div className="flex-grow overflow-hidden"><p className="text-text-primary dark:text-dark-text-primary font-medium truncate">{song.title}</p><p className="text-text-secondary dark:text-dark-text-secondary text-sm truncate">{song.artist}</p></div></button></li>
+                                <li key={song.id}><button onClick={() => handlePlaySong(song)} className="w-full text-left p-3 hover:bg-gray-100 dark:hover:bg-dark-border-color flex items-center gap-4 rounded-md">
+                                    <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0">
+                                        <img src={song.albumArt} alt={song.title} className="w-full h-full object-cover" />
+                                    </div>
+                                    <div className="flex-grow overflow-hidden"><p className="text-text-primary dark:text-dark-text-primary font-semibold truncate">{song.title}</p><p className="text-text-secondary dark:text-dark-text-secondary text-sm truncate">{song.artist}</p></div>
+                                </button></li>
                             ))}
                         </>
                     )}
                     {hasDebouncedQuery && hasYoutubeResults && (
                          <>
-                            <li className="px-2 pt-4 pb-1 text-xs font-bold text-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">Add from YouTube</li>
+                            <li className="px-3 pt-4 pb-1 text-xs font-bold text-text-secondary dark:text-dark-text-secondary uppercase tracking-wider">Add from YouTube</li>
                             {youtubeResults.map(result => (
-                                <li key={result.id}><button onClick={() => handleAddSong(result)} className="w-full text-left p-2 hover:bg-gray-100 dark:hover:bg-dark-border-color flex items-center gap-3 rounded-md"><img src={`https://i.ytimg.com/vi/${result.id}/hqdefault.jpg`} alt={result.title} className="w-10 h-10 object-cover rounded" /><div className="flex-grow overflow-hidden"><p className="text-text-primary dark:text-dark-text-primary font-medium truncate">{result.title}</p><p className="text-text-secondary dark:text-dark-text-secondary text-sm truncate">{result.artist}</p></div></button></li>
+                                <li key={result.id}><button onClick={() => handleAddSong(result)} className="w-full text-left p-3 hover:bg-gray-100 dark:hover:bg-dark-border-color flex items-center gap-4 rounded-md">
+                                    <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0">
+                                        <img src={`https://i.ytimg.com/vi/${result.id}/maxresdefault.jpg`} alt={result.title} className="w-full h-full object-cover" />
+                                    </div>
+                                    <div className="flex-grow overflow-hidden"><p className="text-text-primary dark:text-dark-text-primary font-semibold truncate">{result.title}</p><p className="text-text-secondary dark:text-dark-text-secondary text-sm truncate">{result.artist}</p></div>
+                                </button></li>
                             ))}
                         </>
                     )}
@@ -192,7 +202,7 @@ export default function Command({ isVisible, onClose }: CommandMenuProps) {
     
     return (
         <div ref={modalRef} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }} className="fixed inset-0 flex-col items-center justify-start pt-24 z-50 bg-black/40 backdrop-blur-lg" style={{ display: 'none' }}>
-            <div className="bg-surface dark:bg-dark-surface w-full h-auto max-h-[60vh] max-w-xl shadow-2xl text-text-primary dark:text-dark-text-primary flex flex-col overflow-hidden border border-border-color dark:border-dark-border-color md:rounded-lg">
+            <div className="bg-surface dark:bg-dark-surface w-full h-auto max-h-[60vh] max-w-2xl shadow-2xl text-text-primary dark:text-dark-text-primary flex flex-col overflow-hidden md:rounded-lg">
                 {commandContent}
             </div>
         </div>

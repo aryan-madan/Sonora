@@ -5,6 +5,8 @@ export default {
     './components/**/*.{ts,tsx}',
     './contexts/**/*.{ts,tsx}',
     './lib/**/*.{ts,tsx}',
+    './index.html',
+    './App.tsx',
   ],
   theme: {
     extend: {
@@ -20,13 +22,13 @@ export default {
         'border-color': '#E5E7EB',
         primary: '#000000',
         dark: {
-          background: '#0a0610',
-          surface: '#180f24',
-          'text-primary': '#f3e8ff',
-          'text-secondary': '#a89db9',
-          'border-color': '#3f254d',
+          background: '#080808',
+          surface: '#121212',
+          'text-primary': '#FAFAFA',
+          'text-secondary': '#a3a3a3',
+          'border-color': '#262626',
           primary: '#D946EF',
-          'heading-inactive': '#21182f',
+          'heading-inactive': '#404040',
         },
       },
     },

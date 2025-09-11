@@ -1,5 +1,3 @@
-
-
 import { YouTubeSearchResult } from '../types';
 
 export const searchYouTube = async (query: string): Promise<YouTubeSearchResult[]> => {
@@ -28,9 +26,8 @@ export const searchYouTube = async (query: string): Promise<YouTubeSearchResult[
                 title: video.title,
                 artist: video.author,
                 duration: (video.lengthSeconds || 0) * 1000,
-                thumbnail: video.videoThumbnails?.find((t: any) => t.quality === 'mqdefault')?.url
-                           || video.videoThumbnails?.[0]?.url
-                           || `https://i.ytimg.com/vi/${video.videoId}/mqdefault.jpg`,
+                thumbnail: video.videoThumbnails?.[0]?.url
+                           || `https://i.ytimg.com/vi/${video.videoId}/maxresdefault.jpg`,
             }))
             .slice(0, 10);
 

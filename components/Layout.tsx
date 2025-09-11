@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useMusic } from '../contexts/Music';
-import { Song, YouTubeSearchResult } from '../types';
+import { Song } from '../types';
 import { 
     PiPlayFill, PiPauseFill, PiSkipForwardFill, PiSkipBackFill,
     PiSpeakerHigh, PiSpeakerSlash, PiQueue,
@@ -23,28 +23,55 @@ const formatDuration = (ms: number) => {
 const CreatePlaylistModal = () => {
     const { isCreatePlaylistModalVisible, hideCreatePlaylistModal, createPlaylist } = useMusic();
     const [name, setName] = useState('');
+    const containerRef = useRef<HTMLDivElement>(null);
     const modalRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        const modalElement = modalRef.current;
-        if (!modalElement) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                hideCreatePlaylistModal();
+            }
+        };
+        if (isCreatePlaylistModalVisible) {
+            window.addEventListener('keydown', handleKeyDown);
+        }
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [isCreatePlaylistModalVisible, hideCreatePlaylistModal]);
+    
+    useEffect(() => {
+        const container = containerRef.current;
+        const modal = modalRef.current;
+        if (!container || !modal) return;
 
         if (isCreatePlaylistModalVisible) {
-            gsap.fromTo(modalElement,
-                { y: -30, opacity: 0 },
-                { display: 'flex', y: 0, opacity: 1, duration: 0.4, ease: 'power3.out',
+            container.style.display = 'flex';
+            gsap.to(container, { opacity: 1, duration: 0.3 });
+            gsap.fromTo(modal,
+                { y: 20, opacity: 0, scale: 0.95 },
+                { 
+                    y: 0, 
+                    opacity: 1, 
+                    scale: 1,
+                    duration: 0.4, 
+                    ease: 'power3.out',
                     onStart: () => setTimeout(() => inputRef.current?.focus(), 100)
                 }
             );
         } else {
-            gsap.to(modalElement, {
-                y: -30, opacity: 0, duration: 0.3, ease: 'power3.in',
-                onComplete: () => {
-                    if (modalElement) modalElement.style.display = 'none';
-                    setName('');
-                }
+            gsap.to(modal, {
+                y: 20,
+                opacity: 0,
+                scale: 0.95,
+                duration: 0.3, 
+                ease: 'power3.in',
             });
+            gsap.to(container, { opacity: 0, duration: 0.3, delay: 0.1, onComplete: () => {
+                container.style.display = 'none';
+                setName('');
+            }});
         }
     }, [isCreatePlaylistModalVisible]);
 
@@ -58,29 +85,33 @@ const CreatePlaylistModal = () => {
     
     return (
          <div 
+            ref={containerRef}
             onClick={hideCreatePlaylistModal} 
-            className={`fixed inset-0 items-center justify-center z-50 bg-black/40 backdrop-blur-md ${isCreatePlaylistModalVisible ? 'flex' : 'hidden'}`}
+            className="fixed inset-0 items-center justify-center z-50 bg-black/50 backdrop-blur-xl p-4"
+            style={{ display: 'none', opacity: 0 }}
         >
-            <div ref={modalRef} onClick={e => e.stopPropagation()} className="bg-surface dark:bg-dark-surface w-full max-w-sm shadow-2xl text-text-primary dark:text-dark-text-primary flex-col overflow-hidden border border-border-color dark:border-dark-border-color rounded-lg" style={{display: 'none'}}>
-                <div className="p-4 border-b border-border-color dark:border-dark-border-color flex items-center justify-between">
-                    <h2 className="font-bold text-lg">Create New Playlist</h2>
-                    <button onClick={hideCreatePlaylistModal} className="p-1 text-text-secondary dark:text-dark-text-secondary hover:text-text-primary dark:hover:text-dark-text-primary rounded-full hover:bg-gray-100 dark:hover:bg-dark-border-color">
-                        <PiX className="h-5 w-5" />
-                    </button>
+            <div 
+                ref={modalRef} 
+                onClick={e => e.stopPropagation()} 
+                className="bg-surface dark:bg-dark-surface w-full max-w-xl shadow-2xl text-text-primary dark:text-dark-text-primary overflow-hidden border border-border-color dark:border-dark-border-color rounded-md"
+            >
+                <div className="p-10">
+                    <h2 className="font-bold text-4xl font-heading mb-2">Create New Playlist</h2>
+                    <p className="text-text-secondary dark:text-dark-text-secondary mb-8">Give your new collection a name.</p>
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="My Awesome Playlist"
+                            className="w-full bg-gray-100 dark:bg-dark-background border border-border-color dark:border-dark-border-color px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-dark-primary rounded-lg transition-all text-lg"
+                        />
+                         <button type="submit" className="w-full py-3 px-4 bg-text-primary dark:bg-dark-primary text-background dark:text-dark-background font-bold hover:bg-gray-700 dark:hover:bg-fuchsia-400 transition-colors rounded-lg text-base">
+                            Create Playlist
+                        </button>
+                    </form>
                 </div>
-                <form onSubmit={handleSubmit} className="p-4 space-y-4">
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="My Awesome Playlist"
-                        className="w-full bg-gray-100 dark:bg-dark-background border border-border-color dark:border-dark-border-color px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-dark-primary rounded-md"
-                    />
-                     <button type="submit" className="w-full py-2 px-4 bg-text-primary dark:bg-dark-primary text-background dark:text-dark-background font-bold hover:bg-gray-700 dark:hover:bg-fuchsia-400 transition-colors rounded-md">
-                        Create
-                    </button>
-                </form>
             </div>
         </div>
     );
@@ -92,6 +123,8 @@ const AddSongModal = () => {
     } = useMusic();
     const [title, setTitle] = useState('');
     const [artist, setArtist] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
     const modalRef = useRef<HTMLDivElement>(null);
     const titleInputRef = useRef<HTMLInputElement>(null);
 
@@ -118,22 +151,50 @@ const AddSongModal = () => {
         return cleaned.trim();
     };
 
+     useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                hideAddSongModal();
+            }
+        };
+        if (isAddSongModalVisible) {
+            window.addEventListener('keydown', handleKeyDown);
+        }
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [isAddSongModalVisible, hideAddSongModal]);
+
     useEffect(() => {
-        const modalElement = modalRef.current;
-        if (!modalElement) return;
+        const container = containerRef.current;
+        const modal = modalRef.current;
+        if (!container || !modal) return;
 
         if (isAddSongModalVisible) {
-            gsap.fromTo(modalElement,
-                { y: -30, opacity: 0 },
-                { display: 'flex', y: 0, opacity: 1, duration: 0.4, ease: 'power3.out',
+            container.style.display = 'flex';
+            gsap.to(container, { opacity: 1, duration: 0.3 });
+            gsap.fromTo(modal,
+                { y: 20, opacity: 0, scale: 0.95 },
+                { 
+                    y: 0, 
+                    opacity: 1, 
+                    scale: 1,
+                    duration: 0.4, 
+                    ease: 'power3.out',
                     onStart: () => setTimeout(() => titleInputRef.current?.focus(), 100)
                 }
             );
         } else {
-            gsap.to(modalElement, {
-                y: -30, opacity: 0, duration: 0.3, ease: 'power3.in',
-                onComplete: () => { if (modalElement) modalElement.style.display = 'none'; }
+            gsap.to(modal, {
+                y: 20,
+                opacity: 0,
+                scale: 0.95,
+                duration: 0.3, 
+                ease: 'power3.in',
             });
+            gsap.to(container, { opacity: 0, duration: 0.3, delay: 0.1, onComplete: () => {
+                container.style.display = 'none';
+            }});
         }
     }, [isAddSongModalVisible]);
 
@@ -142,11 +203,16 @@ const AddSongModal = () => {
             setTitle(cleanSongTitle(songToAdd.title, songToAdd.artist));
             setArtist(songToAdd.artist);
         }
-    }, [songToAdd]);
+        if (isAddSongModalVisible) {
+            setIsSubmitting(false);
+        }
+    }, [songToAdd, isAddSongModalVisible]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!title.trim() || !artist.trim() || !songToAdd) return;
+        if (!title.trim() || !artist.trim() || !songToAdd || isSubmitting) return;
+        
+        setIsSubmitting(true);
         try {
             const newSong = await addSongToLibrary({
                 id: songToAdd.id,
@@ -159,6 +225,8 @@ const AddSongModal = () => {
         } catch (error) {
             // Error toast is handled in context
             hideAddSongModal();
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -166,40 +234,59 @@ const AddSongModal = () => {
 
     return (
         <div 
+            ref={containerRef}
             onClick={hideAddSongModal} 
-            className={`fixed inset-0 items-center justify-center z-50 bg-black/40 backdrop-blur-md ${isAddSongModalVisible ? 'flex' : 'hidden'}`}
+            className="fixed inset-0 items-center justify-center z-50 bg-black/50 backdrop-blur-xl p-4"
+            style={{ display: 'none', opacity: 0 }}
         >
-            <div ref={modalRef} onClick={e => e.stopPropagation()} className="bg-surface dark:bg-dark-surface w-full max-w-sm shadow-2xl text-text-primary dark:text-dark-text-primary flex-col overflow-hidden border border-border-color dark:border-dark-border-color rounded-lg" style={{display: 'none'}}>
-                <div className="p-4 border-b border-border-color dark:border-dark-border-color flex items-center justify-between">
-                    <h2 className="font-bold text-lg">Add to Library</h2>
-                    <button onClick={hideAddSongModal} className="p-1 text-text-secondary dark:text-dark-text-secondary hover:text-text-primary dark:hover:text-dark-text-primary rounded-full hover:bg-gray-100 dark:hover:bg-dark-border-color">
-                        <PiX className="h-5 w-5" />
-                    </button>
+            <div 
+                ref={modalRef} 
+                onClick={e => e.stopPropagation()} 
+                className="bg-surface dark:bg-dark-surface w-full max-w-xl shadow-2xl text-text-primary dark:text-dark-text-primary overflow-hidden border border-border-color dark:border-dark-border-color rounded-2xl"
+            >
+                <div className="p-10">
+                    <h2 className="font-bold text-4xl font-heading mb-2">Add to Library</h2>
+                    <p className="text-text-secondary dark:text-dark-text-secondary mb-8">Confirm the details for your new track.</p>
+                
+                    <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-dark-background rounded-lg mb-8 border border-border-color dark:border-dark-border-color">
+                        <div className="w-20 h-20 rounded-md overflow-hidden flex-shrink-0">
+                            <img src={`https://i.ytimg.com/vi/${songToAdd.id}/maxresdefault.jpg`} alt="Song thumbnail" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="overflow-hidden">
+                            <p className="font-semibold truncate text-text-primary dark:text-dark-text-primary">{songToAdd.title}</p>
+                            <p className="text-sm truncate text-text-secondary dark:text-dark-text-secondary flex items-center gap-1.5"><PiYoutubeLogo /> YouTube Track</p>
+                        </div>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="text-sm font-bold text-text-primary dark:text-dark-text-primary">Title</label>
+                            <input
+                                ref={titleInputRef}
+                                type="text"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                className="w-full bg-gray-100 dark:bg-dark-background border border-border-color dark:border-dark-border-color px-4 py-3 mt-1 focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-dark-primary rounded-lg transition-all text-lg"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-sm font-bold text-text-primary dark:text-dark-text-primary">Artist</label>
+                            <input
+                                type="text"
+                                value={artist}
+                                onChange={(e) => setArtist(e.target.value)}
+                                className="w-full bg-gray-100 dark:bg-dark-background border border-border-color dark:border-dark-border-color px-4 py-3 mt-1 focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-dark-primary rounded-lg transition-all text-lg"
+                            />
+                        </div>
+                        <button 
+                            type="submit" 
+                            disabled={isSubmitting}
+                            className="w-full py-3 px-4 bg-text-primary dark:bg-dark-primary text-background dark:text-dark-background font-bold hover:bg-gray-700 dark:hover:bg-fuchsia-400 transition-colors rounded-lg text-base !mt-8 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isSubmitting ? 'Adding...' : 'Add & Play'}
+                        </button>
+                    </form>
                 </div>
-                <form onSubmit={handleSubmit} className="p-4 space-y-4">
-                    <div>
-                        <label className="text-xs font-bold text-text-secondary dark:text-dark-text-secondary">TITLE</label>
-                        <input
-                            ref={titleInputRef}
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            className="w-full bg-gray-100 dark:bg-dark-background border border-border-color dark:border-dark-border-color px-3 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-dark-primary rounded-md"
-                        />
-                    </div>
-                    <div>
-                        <label className="text-xs font-bold text-text-secondary dark:text-dark-text-secondary">ARTIST</label>
-                        <input
-                            type="text"
-                            value={artist}
-                            onChange={(e) => setArtist(e.target.value)}
-                            className="w-full bg-gray-100 dark:bg-dark-background border border-border-color dark:border-dark-border-color px-3 py-2 mt-1 focus:outline-none focus:ring-2 focus:ring-primary dark:focus:ring-dark-primary rounded-md"
-                        />
-                    </div>
-                    <button type="submit" className="w-full py-2 px-4 bg-text-primary dark:bg-dark-primary text-background dark:text-dark-background font-bold hover:bg-gray-700 dark:hover:bg-fuchsia-400 transition-colors rounded-md">
-                        Add & Play
-                    </button>
-                </form>
             </div>
         </div>
     );
@@ -251,7 +338,7 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
                     !loading && (
                         <button
                             onClick={signInWithGoogle}
-                            className="px-3 py-1.5 bg-text-primary dark:bg-dark-primary text-background dark:text-dark-background text-sm font-bold hover:bg-gray-700 dark:hover:bg-fuchsia-400 transition-colors"
+                            className="px-3 py-1.5 bg-text-primary dark:bg-dark-primary text-background dark:text-dark-background text-sm font-bold hover:bg-gray-700 dark:hover:bg-fuchsia-400 transition-colors rounded-md"
                         >
                             Sign In
                         </button>
@@ -263,8 +350,12 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
 };
 
 const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
-    const { playlists, setActiveView, activeView, currentSong, showCreatePlaylistModal } = useMusic();
+    const { 
+        playlists, setActiveView, activeView, currentSong, showCreatePlaylistModal,
+        isPlaying, togglePlay, playNext, playPrev
+    } = useMusic();
     const sidebarRef = React.useRef<HTMLElement>(null);
+    const backdropRef = React.useRef<HTMLDivElement>(null);
     
     useEffect(() => {
         const mediaQuery = window.matchMedia('(min-width: 768px)');
@@ -273,11 +364,14 @@ const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) 
             if (mediaQuery.matches) {
                 if (sidebarRef.current) {
                     sidebarRef.current.style.transform = '';
+                    gsap.set(backdropRef.current, { autoAlpha: 0 });
                 }
             } else {
                 if (isOpen) {
+                    gsap.to(backdropRef.current, { autoAlpha: 1, duration: 0.4, ease: 'power3.out' });
                     gsap.to(sidebarRef.current, { x: '0%', duration: 0.4, ease: 'power3.out' });
                 } else {
+                    gsap.to(backdropRef.current, { autoAlpha: 0, duration: 0.3, ease: 'power3.in' });
                     gsap.to(sidebarRef.current, { x: '-100%', duration: 0.3, ease: 'power3.in' });
                 }
             }
@@ -309,7 +403,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) 
                 onClick={() => handleItemClick(item.action)}
                 className={`w-full truncate font-heading text-5xl md:text-8xl font-black transition-colors duration-300 flex items-center text-left leading-none md:leading-tight
                     ${isActive ? 'text-text-primary dark:text-dark-text-primary' : 'text-gray-200 dark:text-dark-heading-inactive'}
-                    hover:text-gray-400 dark:hover:text-gray-500`}
+                    hover:text-gray-400 dark:hover:text-neutral-500`}
             >
                 {item.name}
             </button>
@@ -318,10 +412,10 @@ const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) 
 
     return (
         <>
-            {isOpen && <div onClick={onClose} className="fixed inset-0 bg-black/30 z-30 md:hidden"></div>}
+            <div ref={backdropRef} onClick={onClose} className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 md:hidden" style={{ visibility: 'hidden', opacity: 0 }}></div>
             
             <aside ref={sidebarRef} className="fixed md:relative inset-y-0 left-0 z-40 md:z-auto bg-background dark:bg-dark-background
-                flex flex-col w-[80%] max-w-sm md:w-[40%] md:max-w-sm md:flex-shrink-0 p-10 pt-0 transform -translate-x-full md:translate-x-0
+                flex flex-col w-[80%] max-w-sm md:w-[40%] md:max-w-sm md:flex-shrink-0 p-4 md:p-10 md:pt-0 transform -translate-x-full md:translate-x-0
                 min-h-0 group
             ">
                 <div className="pt-10 md:pt-0 flex-grow overflow-y-auto hide-scrollbar flex flex-col min-h-0">
@@ -338,17 +432,19 @@ const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) 
                         onClick={() => { showCreatePlaylistModal(); onClose(); }}
                         className="w-full truncate font-heading text-5xl md:text-8xl font-black transition-all duration-300 flex items-center text-left leading-none md:leading-tight
                             text-gray-200 dark:text-dark-heading-inactive
-                            hover:text-gray-400 dark:hover:text-gray-500
+                            hover:text-gray-400 dark:hover:text-neutral-500
                             opacity-0 group-hover:opacity-100 mt-4"
                         aria-label="Create new playlist"
                     >
-                        + New Playlist
+                        New Playlist
                     </button>
                 </div>
 
                 {currentSong && (
-                    <div className="mt-auto pt-8 flex-shrink-0">
-                        <img src={currentSong.albumArt} alt={currentSong.title} className="w-full aspect-square object-cover shadow-lg" />
+                     <div className="mt-auto pt-8 flex-shrink-0">
+                        <div className="w-full aspect-square shadow-lg overflow-hidden rounded-md">
+                            <img src={currentSong.albumArt} alt={currentSong.title} className="w-full h-full object-cover" />
+                        </div>
                     </div>
                 )}
             </aside>
@@ -411,7 +507,7 @@ const SongItem = ({ song, index }: { song: Song; index: number; }) => {
                     className="text-text-secondary dark:text-dark-text-secondary opacity-0 group-hover:opacity-100 transition-opacity"
                     aria-label={`Like ${song.title}`}
                 >
-                    {isLiked ? <PiHeartFill className="h-5 w-5 text-fuchsia-500" /> : <PiHeart className="h-5 w-5" />}
+                    {isLiked ? <PiHeartFill className="h-5 w-5 text-primary dark:text-dark-primary" /> : <PiHeart className="h-5 w-5" />}
                 </button>
             </div>
         </li>
@@ -443,13 +539,13 @@ const MainContent = () => {
     }, [songs]);
 
     return (
-        <main className="flex-grow pb-4 md:pt-0 flex flex-col min-w-0">
+        <main className="flex-grow p-4 md:p-10 md:pt-0 flex flex-col min-w-0">
             <div className="flex-grow flex flex-col min-h-0">
-                <div className="hidden sm:flex justify-end text-xs text-text-secondary dark:text-dark-text-secondary uppercase tracking-widest p-4 pb-0">
+                <div className="hidden sm:flex justify-end text-xs text-text-secondary dark:text-dark-text-secondary uppercase tracking-widest px-4">
                     <div className="w-20 text-left">Time</div>
                 </div>
-                <div className="flex-grow overflow-y-auto hide-scrollbar p-4">
-                    <ul ref={listRef}>
+                <div className="flex-grow overflow-y-auto hide-scrollbar [mask-image:linear-gradient(to_bottom,transparent_0,black_5%,black_95%,transparent_100%)]">
+                    <ul ref={listRef} className="py-2">
                         {songs.length > 0 ? (
                             songs.map((song, index) => (
                                 <SongItem key={song.id} song={song} index={index} />
@@ -461,10 +557,10 @@ const MainContent = () => {
                         )}
                     </ul>
                 </div>
-                 <div className="flex justify-end mt-auto pt-4 pr-4">
+                <div className="flex justify-end mt-2 mb-2 px-4 flex-shrink-0">
                     <button
                         onClick={showCommandMenu}
-                        className="px-4 py-2 bg-text-primary dark:bg-dark-primary text-background dark:text-dark-background text-sm font-bold hover:bg-gray-700 dark:hover:bg-fuchsia-400 transition-colors"
+                        className="px-4 py-2 bg-text-primary dark:bg-dark-primary text-background dark:text-dark-background text-sm font-bold hover:bg-gray-700 dark:hover:bg-fuchsia-400 transition-colors rounded-md"
                     >
                         + Add new track
                     </button>
@@ -500,13 +596,18 @@ const Player = () => {
     return (
         <footer className="relative flex-shrink-0 h-24 bg-surface dark:bg-dark-background px-4 md:px-10 border-t border-border-color dark:border-dark-border-color">
             <div className="flex items-center justify-between h-full">
-                <div className="w-2/3 md:w-1/3 flex-shrink-0 md:flex-1">
+                <div className="w-2/3 md:w-1/3 flex-shrink-0 md:flex-1 overflow-hidden">
                     <div 
-                        className="cursor-pointer max-w-full"
+                        className="flex items-center gap-4 cursor-pointer"
                         onClick={showShowcase}
                     >
-                        <p className="font-bold text-sm truncate">{currentSong.title}</p>
-                        <p className="text-xs text-text-secondary dark:text-dark-text-secondary truncate">{currentSong.artist}</p>
+                        <div className="h-14 w-14 rounded-md overflow-hidden flex-shrink-0 md:hidden">
+                            <img src={currentSong.albumArt} alt={currentSong.title} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="overflow-hidden">
+                            <p className="font-bold text-sm truncate">{currentSong.title}</p>
+                            <p className="text-xs text-text-secondary dark:text-dark-text-secondary truncate">{currentSong.artist}</p>
+                        </div>
                     </div>
                 </div>
 
@@ -531,7 +632,7 @@ const Player = () => {
                 <div className="flex items-center justify-end gap-1 md:gap-4 w-1/3 md:flex-1">
                     <div className="flex md:hidden items-center justify-end gap-3">
                         <button onClick={() => likeSong(currentSong)} className="text-text-secondary dark:text-dark-text-secondary transition-colors p-1">
-                           {isLiked ? <PiHeartFill className="h-6 w-6 text-fuchsia-500" /> : <PiHeart className="h-6 w-6" />}
+                           {isLiked ? <PiHeartFill className="h-6 w-6 text-primary dark:text-dark-primary" /> : <PiHeart className="h-6 w-6" />}
                         </button>
                         <button onClick={togglePlay} className="text-text-primary dark:text-dark-text-primary transition-colors p-1" disabled={!currentSong}>
                             {isPlaying ? <PiPauseFill className="h-8 w-8" /> : <PiPlayFill className="h-8 w-8" />}
@@ -554,7 +655,7 @@ const Player = () => {
                             {isMuted || volume === 0 ? <PiSpeakerSlash className="h-5 w-5" /> : <PiSpeakerHigh className="h-5 w-5" />}
                         </button>
                         <button onClick={() => likeSong(currentSong)} className="text-text-secondary dark:text-dark-text-secondary hover:text-text-primary dark:hover:text-dark-text-primary transition-colors p-2" title="Like song">
-                           {isLiked ? <PiHeartFill className="h-6 w-6 text-fuchsia-500" /> : <PiHeart className="h-6 w-6" />}
+                           {isLiked ? <PiHeartFill className="h-6 w-6 text-primary dark:text-dark-primary" /> : <PiHeart className="h-6 w-6" />}
                         </button>
                         <button onClick={() => isQueueVisible ? hideQueue() : showQueue()} className="text-text-secondary dark:text-dark-text-secondary hover:text-text-primary dark:hover:text-dark-text-primary transition-colors p-2" title="Show queue">
                             <PiQueue className="h-6 w-6" />
