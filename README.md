@@ -1,45 +1,46 @@
+<p align="center">
+  <img src="public/icon.svg" alt="Sonora Logo" width="100" />
+</p>
 
 # Sonora Music
 
-A minimalist music application concept designed for a seamless and aesthetically pleasing listening experience.  
-Discover, organize, and enjoy music with a focus on a clean user interface and smooth animations.
+A minimalist music app focused on a clean interface and smooth animations.  
+Discover, organize, and enjoy music seamlessly.
 
-## 🚀 Core Features
+## Core Features
 
-- **Minimalist UI** with Light & Dark Modes  
-- **YouTube Playback**: Play any song directly from YouTube (Iframe Player API)  
-- **Personal Cloud Library**: Auth & Firestore for storing library, playlists, liked songs  
-- **Playlist Management**  
-- **Real-time Lyrics** (from lrclib.net)  
-- **Command Palette** (`⌘+K` / `Ctrl+K`) for quick search and song adding  
-- **Interactive Queue** with drag-and-drop reordering  
-- **Immersive Player** with Showcase mode (artwork blur, lyrics)  
-- **Lyrics Card Export** to share favorite lyrics  
-- **Google Authentication**  
+- Minimalist UI with Light & Dark Modes  
+- YouTube Playback (Iframe Player API)  
+- Personal Cloud Library (Auth & Firestore)  
+- Playlist Management  
+- Real-time Lyrics (lrclib.net)  
+- Command Palette (`⌘+K` / `Ctrl+K`) for quick search  
+- Interactive Queue with drag-and-drop  
+- Immersive Player (artwork blur, lyrics showcase)  
+- Lyrics Card Export  
+- Google Authentication  
 - Fully Responsive (desktop & mobile)
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-- React  
-- TypeScript  
-- Tailwind CSS  
+- React, TypeScript, Tailwind CSS  
 - GSAP for animations  
-- Firebase (Authentication & Firestore)  
-- Vercel Functions for API endpoints (search, lyrics)  
-- YouTube Iframe Player API + play-dl for search  
-- React Context API (state management)
+- Firebase (Auth & Firestore)  
+- Vercel Functions for search & lyrics APIs  
+- YouTube Iframe Player API + play-dl  
+- React Context API for state management
 
-## ✅ Work Attribution
+## Work Attribution
 
-- **Frontend & UI Design** – Done by me  
-- **Lyrics Display System** – Developed by me  
-- **Firebase Integration (Auth & Firestore Setup)** – Assisted by AI  
-- **YouTube Search API (Serverless Function)** – AI helped write the search function  
-- **Lyrics Fetching API (Serverless Function)** – Collaboratively built (me + AI)
+- UI Design & Frontend – Me  
+- Lyrics Display System – Me  
+- Firebase Integration – Assisted by AI  
+- YouTube Search API – AI helped write  
+- Lyrics Fetching API – Built collaboratively
 
-## ⚡ Getting Started
+## Getting Started
 
-1. Install Node.js (v18+) and your preferred package manager (npm/yarn/pnpm)  
+1. Install Node.js (v18+) and package manager  
 2. Clone the repo:  
     ```bash
     git clone https://github.com/your-username/sonora.git  
@@ -49,26 +50,25 @@ Discover, organize, and enjoy music with a focus on a clean user interface and s
     ```bash
     npm install  
     ```  
-4. Configure Firebase:  
-    - Create a project on [Firebase Console](https://console.firebase.google.com)  
-    - Enable Google Authentication & Firestore  
-    - Add Firebase config to `lib/firebase.ts` (or use environment variables)  
-5. Run dev server:  
+4. Set up Firebase:  
+    - Enable Google Auth & Firestore  
+    - Add config to `lib/firebase.ts` or use env variables  
+5. Start dev server:  
     ```bash
     npm run dev  
     ```  
-    App runs at `http://localhost:5173`
+    Runs at `http://localhost:5173`
 
-## ☁️ Deployment
+## Deployment
 
-Use Vercel for deployment:  
+Use Vercel:  
 - Push code to GitHub/GitLab  
-- Set Firebase config in Vercel environment variables  
-- Vercel handles build + deployment automatically
+- Set Firebase config as environment variables  
+- Vercel handles build and deploy
 
-## 🙏 Acknowledgements
+## Acknowledgements
 
-- [YouTube](https://www.youtube.com) – Playback & search  
-- [lrclib.net](https://lrclib.net) – Lyrics API  
-- [GSAP](https://gsap.com) – Animations  
-- [Fontshare](https://www.fontshare.com/) – "New Title" font
+- YouTube – Playback & Search  
+- lrclib.net – Lyrics API  
+- GSAP – Animations  
+- Fontshare – "New Title" font
