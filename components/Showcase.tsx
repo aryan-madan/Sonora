@@ -110,7 +110,7 @@ const LyricsDisplay: React.FC<LyricsDisplayProps> = ({ lyrics, currentTime, seek
                             onTouchStart={handleTouchStart}
                             onTouchEnd={clearLongPressTimer}
                             onTouchMove={clearLongPressTimer}
-                            className={`py-1 md:py-2 xl:py-3 px-4 font-['Inter'] text-3xl md:text-3xl xl:text-4xl 2xl:text-5xl font-bold leading-relaxed md:leading-loose tracking-tight transition-all duration-300
+                            className={`py-1 md:py-2 xl:py-3 px-4 font-sans text-2xl md:text-3xl xl:text-4xl 2xl:text-5xl font-bold leading-relaxed md:leading-loose tracking-tight transition-all duration-300
                             ${isExportMode
                                 ? `cursor-pointer rounded-lg ${isSelected ? 'text-white bg-white/20' : !canSelect ? 'text-white/20 cursor-not-allowed' : 'text-white/50 hover:text-white hover:bg-white/10'}`
                                 : `cursor-pointer ${isActive ? 'text-white' : 'text-white/30'}`
@@ -291,7 +291,7 @@ export default function Showcase() {
         const width = 1080;
     
         await document.fonts.load('bold 120px "New Title"');
-        await document.fonts.load('600 72px Inter');
+        await document.fonts.load('500 60px Inter');
         await document.fonts.load('36px Inter');
         await document.fonts.load('bold 48px Inter');
     
@@ -354,8 +354,8 @@ export default function Showcase() {
         const headerTextHeight = titleHeight + artistHeight;
         const headerHeight = Math.max(thumbSize, headerTextHeight);
     
-        const lyricsFont = '600 72px Inter';
-        const lyricsLineHeight = 72 * 1.3;
+        const lyricsFont = '500 60px Inter';
+        const lyricsLineHeight = 60 * 1.3;
         const lyricsMaxWidth = width - (padding * 2);
         const { height: lyricsHeight, lines: lyricsLines } = measureTextHeight(linesToExport, lyricsFont, lyricsMaxWidth, lyricsLineHeight);
     
@@ -499,7 +499,7 @@ export default function Showcase() {
                 onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
             >
                 <div className="absolute top-3 left-1/2 -translate-x-1/2 w-10 h-1.5 bg-white/20 rounded-full cursor-grab md:hidden"></div>
-                <img src={currentSong.albumArt} alt="" className="absolute -z-10 inset-0 w-full h-full object-cover filter blur-3xl scale-125 opacity-20"/>
+                <img src={currentSong.albumArt} alt="" className="absolute -z-10 inset-0 w-full h-full object-cover filter blur-3xl scale-125 opacity-40"/>
                 
                  <div className="absolute top-6 right-6 z-10 flex items-center gap-3">
                     {isExportMode && (

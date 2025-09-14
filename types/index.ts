@@ -91,4 +91,8 @@ export interface MusicContextType {
     songToAdd: YouTubeSearchResult | null;
     showAddSongModal: (song: YouTubeSearchResult) => void;
     hideAddSongModal: () => void;
+    playbackHistory: Song[];
+    isHistoryVisible: boolean;
+    showHistory: () => void;
+    hideHistory: () => void;
 }

@@ -202,7 +202,7 @@ export default function Command({ isVisible, onClose }: CommandMenuProps) {
     
     return (
         <div ref={modalRef} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }} className="fixed inset-0 flex-col items-center justify-start pt-24 z-50 bg-black/40 backdrop-blur-lg" style={{ display: 'none' }}>
-            <div className="bg-surface dark:bg-dark-surface w-full h-auto max-h-[60vh] max-w-2xl shadow-2xl text-text-primary dark:text-dark-text-primary flex flex-col overflow-hidden md:rounded-lg">
+            <div className="bg-surface dark:bg-dark-surface w-full h-auto max-h-[60vh] max-w-2xl shadow-2xl text-text-primary dark:text-dark-text-primary flex flex-col overflow-hidden md:rounded-2xl">
                 {commandContent}
             </div>
         </div>

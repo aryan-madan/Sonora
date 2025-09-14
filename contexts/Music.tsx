@@ -6,7 +6,7 @@ import { useAuth } from './Auth';
 type RepeatMode = 'none' | 'one' | 'all';
 type Theme = 'light' | 'dark';
 
-// add YT Player types to the global window object
+// Add YT Player types to the global window object
 declare global {
     interface Window {
         onYouTubeIframeAPIReady: () => void;
@@ -73,6 +73,10 @@ export interface MusicContextType {
     songToAdd: YouTubeSearchResult | null;
     showAddSongModal: (song: YouTubeSearchResult) => void;
     hideAddSongModal: () => void;
+    playbackHistory: Song[];
+    isHistoryVisible: boolean;
+    showHistory: () => void;
+    hideHistory: () => void;
 }
 
 const MusicContext = createContext<MusicContextType | undefined>(undefined);
@@ -92,17 +96,39 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [volume, setVolumeState] = useState(1);
     const [isMuted, setIsMuted] = useState(false);
     const [theme, setTheme] = useState<Theme>('light');
+    const [playbackHistory, setPlaybackHistory] = useState<Song[]>([]);
     
     const [isCreatePlaylistModalVisible, setIsCreatePlaylistModalVisible] = useState(false);
     const [isShowcaseVisible, setIsShowcaseVisible] = useState(false);
     const [isCommandMenuVisible, setIsCommandMenuVisible] = useState(false);
     const [isQueueVisible, setIsQueueVisible] = useState(false);
+    const [isHistoryVisible, setIsHistoryVisible] = useState(false);
     const [contextMenu, setContextMenu] = useState<ContextMenuState>({ isVisible: false, x: 0, y: 0, song: null });
     const [isAddSongModalVisible, setIsAddSongModalVisible] = useState(false);
     const [songToAdd, setSongToAdd] = useState<YouTubeSearchResult | null>(null);
 
     const playerRef = useRef<any>(null);
     const [isPlayerReady, setIsPlayerReady] = useState(false);
+
+    useEffect(() => {
+        try {
+            const storedHistory = localStorage.getItem('sonora-playback-history');
+            if (storedHistory) {
+                setPlaybackHistory(JSON.parse(storedHistory));
+            }
+        } catch (error) {
+            console.error("Failed to parse playback history from localStorage", error);
+            localStorage.removeItem('sonora-playback-history');
+        }
+    }, []);
+
+    useEffect(() => {
+        if (playbackHistory.length > 0) {
+            localStorage.setItem('sonora-playback-history', JSON.stringify(playbackHistory));
+        } else {
+            localStorage.removeItem('sonora-playback-history');
+        }
+    }, [playbackHistory]);
 
     const loadLibrary = useCallback(async () => {
         if (!user) {
@@ -112,9 +138,9 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             return;
         };
         
-        const songs = await db.getAllSongs();
-        const pls = await db.getAllPlaylists();
-        const liked = await db.getLikedSongs();
+        const songs = await db.getAllSongs(user.uid);
+        const pls = await db.getAllPlaylists(user.uid);
+        const liked = await db.getLikedSongs(user.uid);
     
         const migrationKey = 'sonora-thumbnail-migration-maxres-v1-completed';
         if (!localStorage.getItem(migrationKey)) {
@@ -144,9 +170,9 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 const playlistsToUpdate = updatedPlaylists.filter((p, i) => JSON.stringify(p.songs) !== JSON.stringify(pls[i].songs));
     
                 Promise.all([
-                    ...songsToUpdate.map(s => db.saveSong(s)),
-                    ...likedToUpdate.map(s => db.likeSong(s)),
-                    ...playlistsToUpdate.map(p => db.savePlaylist(p)),
+                    ...songsToUpdate.map(s => db.saveSong(user.uid, s)),
+                    ...likedToUpdate.map(s => db.likeSong(user.uid, s)),
+                    ...playlistsToUpdate.map(p => db.savePlaylist(user.uid, p)),
                 ]).then(() => {
                     console.log("DB migration complete.");
                 }).catch(err => {
@@ -175,6 +201,13 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }, [currentQueue, currentSong]);
     
     const playSong = useCallback((song: Song, queue: Song[]) => {
+        if (currentSong && currentSong.id !== song.id) {
+            setPlaybackHistory(prev => {
+                const newHistory = [currentSong, ...prev.filter(s => s.id !== currentSong.id)];
+                return newHistory.slice(0, 50); // Limit history to 50 songs
+            });
+        }
+
         if (playerRef.current?.getPlayerState) {
             if (currentSong?.id !== song.id && playerRef.current.getPlayerState() !== -1) {
                 playerRef.current.stopVideo();
@@ -237,15 +270,20 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             return;
         }
 
-        const currentIndex = findCurrentSongIndex();
-        if (currentIndex > 0) {
-            playSong(currentQueue[currentIndex - 1], currentQueue);
-        } else if (repeatMode === 'all' && currentQueue.length > 0) {
-            playSong(currentQueue[currentQueue.length - 1], currentQueue);
+        if (playbackHistory.length > 0) {
+            const prevSong = playbackHistory[0];
+            setPlaybackHistory(prev => prev.slice(1));
+
+            const songToQueue = currentSong;
+            setCurrentSong(prevSong);
+
+            if (songToQueue) {
+                setCurrentQueue(prev => [songToQueue, ...prev.filter(s => s.id !== songToQueue.id)]);
+            }
         } else if (playerRef.current) {
             playerRef.current.seekTo(0);
         }
-    }, [findCurrentSongIndex, currentQueue, playSong, repeatMode]);
+    }, [playbackHistory, currentSong, currentQueue]);
 
     const seek = useCallback((time: number) => {
         if (playerRef.current?.seekTo) {
@@ -259,10 +297,11 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }, []);
     
     const updateSongDuration = useCallback(async (songId: string, duration: number) => {
+        if (!user) return;
         const songToUpdate = allSongs.find(s => s.id === songId);
         if (songToUpdate && duration > 0 && songToUpdate.duration !== duration) {
             const updatedSong = { ...songToUpdate, duration };
-            await db.saveSong(updatedSong);
+            await db.saveSong(user.uid, updatedSong);
             const updateSongInArray = (songs: Song[]) => songs.map(s => s.id === songId ? updatedSong : s);
             setAllSongs(updateSongInArray);
             setLikedSongs(updateSongInArray);
@@ -274,7 +313,7 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 setCurrentSong(updatedSong);
             }
         }
-    }, [allSongs, currentSong]);
+    }, [allSongs, currentSong, user]);
     
     const playNextRef = useRef(playNext);
     useEffect(() => {
@@ -437,16 +476,17 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             name,
             songs: [],
         };
-        await db.savePlaylist(newPlaylist);
+        await db.savePlaylist(user.uid, newPlaylist);
         setPlaylists(prev => [...prev, newPlaylist]);
     };
 
     const deletePlaylist = async (playlistId: string) => {
+        if (!user) return;
         const playlistToDelete = playlists.find(p => p.id === playlistId);
         if (!playlistToDelete) return;
 
         if (window.confirm(`Are you sure you want to delete "${playlistToDelete.name}"?`)) {
-            await db.deletePlaylist(playlistId);
+            await db.deletePlaylist(user.uid, playlistId);
             setPlaylists(prev => prev.filter(p => p.id !== playlistId));
 
             if (activeView.type === 'playlist' && activeView.id === playlistId) {
@@ -456,22 +496,24 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     const addSongToPlaylist = async (playlistId: string, song: Song) => {
+        if (!user) return;
         const playlist = playlists.find(p => p.id === playlistId);
         if (playlist && !playlist.songs.some(s => s.id === song.id)) {
             const updatedPlaylist = { ...playlist, songs: [...playlist.songs, song] };
-            await db.savePlaylist(updatedPlaylist);
+            await db.savePlaylist(user.uid, updatedPlaylist);
             setPlaylists(prev => prev.map(p => p.id === playlistId ? updatedPlaylist : p));
         }
     };
 
     const removeSongFromPlaylist = async (playlistId: string, songId: string) => {
+        if (!user) return;
         const playlist = playlists.find(p => p.id === playlistId);
         if (playlist) {
             const updatedPlaylist = {
                 ...playlist,
                 songs: playlist.songs.filter(s => s.id !== songId)
             };
-            await db.savePlaylist(updatedPlaylist);
+            await db.savePlaylist(user.uid, updatedPlaylist);
             setPlaylists(prev => prev.map(p => p.id === playlistId ? updatedPlaylist : p));
         }
     };
@@ -483,10 +525,10 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
         const isLiked = likedSongs.some(s => s.id === song.id);
         if (isLiked) {
-            await db.unlikeSong(song.id);
+            await db.unlikeSong(user.uid, song.id);
             setLikedSongs(prev => prev.filter(s => s.id !== song.id));
         } else {
-            await db.likeSong(song);
+            await db.likeSong(user.uid, song);
             setLikedSongs(prev => [...prev, song]);
         }
     };
@@ -516,10 +558,11 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     const updateSongLyrics = useCallback(async (songId: string, lyrics: string) => {
+        if (!user) return;
         const songToUpdate = allSongs.find(s => s.id === songId);
         if (songToUpdate) {
             const updatedSong = { ...songToUpdate, lyrics };
-            await db.saveSong(updatedSong);
+            await db.saveSong(user.uid, updatedSong);
             const updateSongInArray = (songs: Song[]) => songs.map(s => s.id === songId ? updatedSong : s);
             setAllSongs(updateSongInArray);
             setLikedSongs(updateSongInArray);
@@ -531,7 +574,7 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 setCurrentSong(updatedSong);
             }
         }
-    }, [allSongs, currentSong]);
+    }, [allSongs, currentSong, user]);
     
     const addSongToLibrary = useCallback(async (songDetails: { id: string; title: string; artist: string; duration: number; }): Promise<Song> => {
         if (!user) {
@@ -549,7 +592,7 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             albumArt: `https://img.youtube.com/vi/${songDetails.id}/maxresdefault.jpg`,
         };
     
-        await db.saveSong(newSong);
+        await db.saveSong(user.uid, newSong);
         setAllSongs(prev => [...prev, newSong]);
         return newSong;
     }, [allSongs, user]);
@@ -596,6 +639,7 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const toggleRepeatMode = () => setRepeatMode(prev => (prev === 'none' ? 'all' : prev === 'all' ? 'one' : 'none'));
 
     const deleteSongFromLibrary = async (songId: string) => {
+        if (!user) return;
         const songToDelete = allSongs.find(s => s.id === songId);
         if (!songToDelete) return;
         
@@ -610,8 +654,8 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             playerRef.current.stopVideo();
         }
         
-        await db.deleteSong(songId);
-        await db.unlikeSong(songId);
+        await db.deleteSong(user.uid, songId);
+        await db.unlikeSong(user.uid, songId);
 
         setAllSongs(prev => prev.filter(s => s.id !== songId));
         setLikedSongs(prev => prev.filter(s => s.id !== songId));
@@ -619,7 +663,7 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const updatedPlaylists = await Promise.all(playlists.map(async p => {
             if (p.songs.some(s => s.id === songId)) {
                 const newPlaylist = { ...p, songs: p.songs.filter(s => s.id !== songId) };
-                await db.savePlaylist(newPlaylist);
+                await db.savePlaylist(user.uid, newPlaylist);
                 return newPlaylist;
             }
             return p;
@@ -696,6 +740,17 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setIsAddSongModalVisible(false);
     };
 
+    const showHistory = () => {
+        setIsHistoryVisible(true);
+        setIsQueueVisible(false);
+    };
+    const hideHistory = () => setIsHistoryVisible(false);
+    const showQueue = () => {
+        setIsQueueVisible(true);
+        setIsHistoryVisible(false);
+    };
+    const hideQueue = () => setIsQueueVisible(false);
+
     const value = {
         playlists, likedSongs, allSongs, currentSong, isPlaying, activeView,
         currentQueue, progress, isShuffle, repeatMode, volume, isMuted,
@@ -716,11 +771,10 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         isCommandMenuVisible,
         showCommandMenu: () => setIsCommandMenuVisible(true),
         hideCommandMenu: () => setIsCommandMenuVisible(false),
-        isQueueVisible,
-        showQueue: () => setIsQueueVisible(true),
-        hideQueue: () => setIsQueueVisible(false),
+        isQueueVisible, showQueue, hideQueue,
         contextMenu, showContextMenu, hideContextMenu,
         isAddSongModalVisible, songToAdd, showAddSongModal, hideAddSongModal,
+        playbackHistory, isHistoryVisible, showHistory, hideHistory,
     };
 
     return (

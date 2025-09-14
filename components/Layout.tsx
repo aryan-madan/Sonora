@@ -6,11 +6,13 @@ import {
     PiSpeakerHigh, PiSpeakerSlash, PiQueue,
     PiUser, PiSignOut, PiSun, PiMoon, PiList, PiMagnifyingGlass,
     PiHeart, PiHeartFill, PiX, PiPlaylist, PiTrash, PiMinusCircle, 
-    PiArrowElbowDownRight, PiYoutubeLogo, PiCaretRight, PiShuffle, PiRepeat, PiRepeatOnce
+    PiArrowElbowDownRight, PiYoutubeLogo, PiCaretRight, PiShuffle, PiRepeat, 
+    PiRepeatOnce, PiClockCounterClockwise, PiMicrophone
 } from 'react-icons/pi';
 import { useAuth } from '../contexts/Auth';
 import { gsap } from 'gsap';
 import Queue from './Queue';
+import History from './History';
 
 const formatDuration = (ms: number) => {
     if (isNaN(ms) || ms <= 0) return '--:--';
@@ -294,36 +296,65 @@ const AddSongModal = () => {
 
 const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
     const { user, signOut, signInWithGoogle, loading } = useAuth();
-    const { theme, toggleTheme, showCommandMenu } = useMusic();
+    const { theme, toggleTheme, showCommandMenu, showHistory, hideHistory, isHistoryVisible } = useMusic();
     const [isProfileOpen, setProfileOpen] = useState(false);
+    const [isScrolled, setIsScrolled] = useState(false);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            setIsScrolled(window.scrollY > 10);
+        };
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     return (
-        <header className="px-4 md:px-10 py-6 flex items-center justify-between flex-shrink-0">
-            <div className="flex items-center gap-3">
-                 <button onClick={onMenuClick} className="md:hidden text-text-secondary dark:text-dark-text-secondary p-2 -ml-2">
-                    <PiList className="h-6 w-6" />
-                </button>
-                <img src="/icon.svg" alt="Sonora" className="h-5 w-auto" />
-                <h1 className="font-sans font-bold tracking-[0em] text-xl text-text-primary dark:text-dark-text-primary hidden sm:block">Sonora</h1>
-            </div>
-            <div className="flex items-center gap-2 md:gap-4">
-                <button onClick={showCommandMenu} className="text-text-secondary dark:text-dark-text-secondary hover:text-text-primary dark:hover:text-dark-text-primary transition-colors p-2">
-                    <PiMagnifyingGlass className="h-5 w-5" />
-                </button>
-                <button onClick={toggleTheme} className="text-text-secondary dark:text-dark-text-secondary hover:text-text-primary dark:hover:text-dark-text-primary transition-colors p-2">
-                    {theme === 'light' ? <PiMoon className="h-5 w-5" /> : <PiSun className="h-5 w-5" />}
-                </button>
-                {user ? (
-                    <div className="relative">
-                        <button onClick={() => setProfileOpen(p => !p)} onBlur={() => setTimeout(() => setProfileOpen(false), 150)}>
-                            {user.photoURL ? (
-                                <img src={user.photoURL} alt="Profile" className="h-8 w-8 rounded-full" />
-                            ) : (
-                                <PiUser className="h-8 w-8 p-1 bg-gray-200 dark:bg-dark-surface rounded-full" />
-                            )}
-                        </button>
-                        {isProfileOpen && (
-                            <div className="absolute top-full right-0 mt-2 w-48 bg-surface dark:bg-dark-surface shadow-lg border border-border-color dark:border-dark-border-color z-10 rounded-md overflow-hidden">
+        <header className={`fixed top-0 left-0 right-0 z-20 transition-all duration-300 ${isScrolled ? 'py-4 shadow-lg border-b border-border-color/10 dark:border-dark-border-color/10' : 'py-6'} px-4 md:px-10 backdrop-blur-xl bg-background/80 dark:bg-dark-background/80`}>
+            <div className="relative flex items-center justify-between">
+                <div className="flex items-center gap-4 md:flex-1">
+                     <button onClick={onMenuClick} className="md:hidden text-text-secondary dark:text-dark-text-secondary p-2 -ml-2">
+                        <PiList className="h-6 w-6" />
+                    </button>
+                    <div className="flex items-center gap-3">
+                        <img src="/icon.svg" alt="Sonora" className="h-8 w-auto" />
+                        <h1 className="font-sans tracking-[-0.05em] font-semibold text-2xl text-text-primary dark:text-dark-text-primary hidden sm:block">Sonora</h1>
+                    </div>
+                </div>
+
+                <div className="hidden md:flex flex-1 px-4 sm:px-8 lg:px-16 justify-center">
+                    <button 
+                        onClick={showCommandMenu}
+                        className="w-full max-w-lg mx-auto h-12 px-4 flex items-center gap-3 bg-gray-100/80 dark:bg-dark-surface/80 rounded-2xl text-text-secondary dark:text-dark-text-secondary hover:bg-gray-200/80 dark:hover:bg-dark-border-color/80 transition-colors"
+                        aria-label="Search for songs or artists"
+                    >
+                        <PiMagnifyingGlass className="h-5 w-5" />
+                        <span className="text-sm text-left flex-1">Search songs, artists...</span>
+                        <kbd className="hidden md:inline-block ml-auto text-xs font-sans border border-gray-300 dark:border-dark-border-color rounded px-1.5 py-0.5">⌘K</kbd>
+                    </button>
+                </div>
+                
+                <div className="flex items-center justify-end gap-3 md:flex-1">
+                    <button onClick={showCommandMenu} className="md:hidden w-10 h-10 flex items-center justify-center rounded-full text-text-secondary dark:text-dark-text-secondary hover:text-text-primary dark:hover:text-dark-text-primary transition-colors hover:bg-gray-100 dark:hover:bg-dark-border-color">
+                        <PiMagnifyingGlass className="h-5 w-5" />
+                    </button>
+                    <button onClick={() => isHistoryVisible ? hideHistory() : showHistory()} className="w-10 h-10 flex items-center justify-center rounded-full text-text-secondary dark:text-dark-text-secondary hover:text-text-primary dark:hover:text-dark-text-primary transition-colors hover:bg-gray-100 dark:hover:bg-dark-border-color">
+                        <PiClockCounterClockwise className="h-5 w-5" />
+                    </button>
+                    <button onClick={toggleTheme} className="w-10 h-10 flex items-center justify-center rounded-full text-text-secondary dark:text-dark-text-secondary hover:text-text-primary dark:hover:text-dark-text-primary transition-colors hover:bg-gray-100 dark:hover:bg-dark-border-color">
+                        {theme === 'light' ? <PiMoon className="h-5 w-5" /> : <PiSun className="h-5 w-5" />}
+                    </button>
+                    {user ? (
+                        <div className="relative">
+                            <button onClick={() => setProfileOpen(p => !p)} onBlur={() => setTimeout(() => setProfileOpen(false), 150)}>
+                                {user.photoURL ? (
+                                    <img src={user.photoURL} alt="Profile" className="h-10 w-10 rounded-full" />
+                                ) : (
+                                    <div className="h-10 w-10 flex items-center justify-center bg-gray-200 dark:bg-dark-surface rounded-full">
+                                        <PiUser className="h-5 w-5" />
+                                    </div>
+                                )}
+                            </button>
+                            <div className={`absolute top-full right-0 mt-2 w-48 bg-surface dark:bg-dark-surface shadow-lg border border-border-color dark:border-dark-border-color z-10 rounded-lg overflow-hidden transition-all duration-200 ease-out origin-top-right ${isProfileOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}>
                                 <div className="p-2 border-b border-border-color dark:border-dark-border-color">
                                     <p className="font-semibold text-sm truncate">{user.displayName}</p>
                                     <p className="text-xs text-text-secondary dark:text-dark-text-secondary truncate">{user.email}</p>
@@ -332,18 +363,18 @@ const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
                                     <PiSignOut/> Sign Out
                                 </button>
                             </div>
-                        )}
-                    </div>
-                ) : (
-                    !loading && (
-                        <button
-                            onClick={signInWithGoogle}
-                            className="px-3 py-1.5 bg-text-primary dark:bg-dark-primary text-background dark:text-dark-background text-sm font-bold hover:bg-gray-700 dark:hover:bg-fuchsia-400 transition-colors rounded-md"
-                        >
-                            Sign In
-                        </button>
-                    )
-                )}
+                        </div>
+                    ) : (
+                        !loading && (
+                            <button
+                                onClick={signInWithGoogle}
+                                className="px-4 h-10 bg-text-primary dark:bg-dark-primary text-background dark:text-dark-background text-sm font-bold hover:bg-gray-700 dark:hover:bg-fuchsia-400 transition-colors rounded-2xl"
+                            >
+                                Sign In
+                            </button>
+                        )
+                    )}
+                </div>
             </div>
         </header>
     );
@@ -402,8 +433,11 @@ const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) 
             <button
                 onClick={() => handleItemClick(item.action)}
                 className={`w-full truncate font-heading text-5xl md:text-8xl font-black transition-colors duration-300 flex items-center text-left leading-none md:leading-tight
-                    ${isActive ? 'text-text-primary dark:text-dark-text-primary' : 'text-gray-200 dark:text-dark-heading-inactive'}
-                    hover:text-gray-400 dark:hover:text-neutral-500`}
+                    ${!isActive && 'hover:text-gray-400 dark:hover:text-neutral-500'}
+                    ${isActive 
+                        ? 'text-text-primary dark:text-dark-text-primary' 
+                        : 'text-gray-200 dark:text-dark-heading-inactive'
+                    }`}
             >
                 {item.name}
             </button>
@@ -477,7 +511,7 @@ const SongItem = ({ song, index }: { song: Song; index: number; }) => {
         <li 
             onClick={() => playSong(song, currentQueue)}
             onContextMenu={handleContextMenu}
-            className={`flex items-center py-3 border-b border-border-color dark:border-dark-border-color group cursor-pointer transition-colors ${isCurrent ? 'bg-gray-50 dark:bg-dark-surface' : 'hover:bg-gray-50 dark:hover:bg-dark-surface'}`}
+            className={`flex items-center py-3 border-b border-border-color dark:border-dark-border-color group cursor-pointer transition-colors px-4 ${isCurrent ? 'bg-gray-50 dark:bg-dark-surface' : 'hover:bg-gray-50 dark:hover:bg-dark-surface'}`}
         >
             <div className="w-8 text-text-secondary dark:text-dark-text-secondary text-center flex-shrink-0 relative h-5 flex items-center justify-center">
                 {isCurrent ? (
@@ -497,7 +531,7 @@ const SongItem = ({ song, index }: { song: Song; index: number; }) => {
                 <p className={`font-bold transition-colors truncate ${isCurrent ? 'text-text-primary dark:text-dark-text-primary' : 'text-gray-800 dark:text-gray-300'}`}>{song.title}</p>
                 <p className="text-sm text-text-secondary dark:text-dark-text-secondary truncate">{song.artist}</p>
             </div>
-            <div className="w-20 text-left text-sm text-text-secondary dark:text-dark-text-secondary flex-shrink-0 hidden sm:flex items-center justify-between">
+            <div className="w-20 text-left text-sm text-text-secondary dark:text-dark-text-secondary flex-shrink-0 hidden sm:flex items-center justify-between px-2">
                 <span>{formatDuration(song.duration)}</span>
                 <button 
                     onClick={(e) => {
@@ -542,7 +576,7 @@ const MainContent = () => {
         <main className="flex-grow p-4 md:p-10 md:pt-0 flex flex-col min-w-0">
             <div className="flex-grow flex flex-col min-h-0">
                 <div className="hidden sm:flex justify-end text-xs text-text-secondary dark:text-dark-text-secondary uppercase tracking-widest px-4">
-                    <div className="w-20 text-left">Time</div>
+                    <div className="w-20 text-left px-2">Time</div>
                 </div>
                 <div className="flex-grow overflow-y-auto hide-scrollbar [mask-image:linear-gradient(to_bottom,transparent_0,black_5%,black_95%,transparent_100%)]">
                     <ul ref={listRef} className="py-2">
@@ -557,7 +591,7 @@ const MainContent = () => {
                         )}
                     </ul>
                 </div>
-                <div className="flex justify-end mt-2 mb-2 px-4 flex-shrink-0">
+                <div className="flex justify-end flex-shrink-0">
                     <button
                         onClick={showCommandMenu}
                         className="px-4 py-2 bg-text-primary dark:bg-dark-primary text-background dark:text-dark-background text-sm font-bold hover:bg-gray-700 dark:hover:bg-fuchsia-400 transition-colors rounded-md"
@@ -634,6 +668,9 @@ const Player = () => {
                         <button onClick={() => likeSong(currentSong)} className="text-text-secondary dark:text-dark-text-secondary transition-colors p-1">
                            {isLiked ? <PiHeartFill className="h-6 w-6 text-primary dark:text-dark-primary" /> : <PiHeart className="h-6 w-6" />}
                         </button>
+                        <button onClick={showShowcase} className="text-text-secondary dark:text-dark-text-secondary transition-colors p-1" title="Show lyrics">
+                            <PiMicrophone className="h-6 w-6" />
+                        </button>
                         <button onClick={togglePlay} className="text-text-primary dark:text-dark-text-primary transition-colors p-1" disabled={!currentSong}>
                             {isPlaying ? <PiPauseFill className="h-8 w-8" /> : <PiPlayFill className="h-8 w-8" />}
                         </button>
@@ -656,6 +693,9 @@ const Player = () => {
                         </button>
                         <button onClick={() => likeSong(currentSong)} className="text-text-secondary dark:text-dark-text-secondary hover:text-text-primary dark:hover:text-dark-text-primary transition-colors p-2" title="Like song">
                            {isLiked ? <PiHeartFill className="h-6 w-6 text-primary dark:text-dark-primary" /> : <PiHeart className="h-6 w-6" />}
+                        </button>
+                        <button onClick={showShowcase} className="text-text-secondary dark:text-dark-text-secondary hover:text-text-primary dark:hover:text-dark-text-primary transition-colors p-2" title="Show lyrics">
+                            <PiMicrophone className="h-6 w-6" />
                         </button>
                         <button onClick={() => isQueueVisible ? hideQueue() : showQueue()} className="text-text-secondary dark:text-dark-text-secondary hover:text-text-primary dark:hover:text-dark-text-primary transition-colors p-2" title="Show queue">
                             <PiQueue className="h-6 w-6" />
@@ -802,11 +842,12 @@ export default function Layout() {
 
     return (
         <div className="h-screen w-screen bg-background text-text-primary dark:bg-dark-background dark:text-dark-text-primary font-sans flex flex-col antialiased overflow-hidden">
-            <div className="flex flex-col flex-grow min-h-0">
-                <Header onMenuClick={() => setMobileNavOpen(true)} />
+            <Header onMenuClick={() => setMobileNavOpen(true)} />
+            <div className="flex flex-col flex-grow min-h-0 pt-24">
                 <div className="flex flex-grow min-h-0 relative overflow-hidden">
                     <Sidebar isOpen={isMobileNavOpen} onClose={() => setMobileNavOpen(false)}/>
                     <MainContent />
+                    <History />
                     <Queue />
                 </div>
             </div>
