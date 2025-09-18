@@ -627,9 +627,6 @@ export default function Showcase() {
                     
                     <div className="w-full flex justify-between items-center mt-4">
                         <button onClick={() => setLyricsVisible(v => !v)} className={`p-2 transition-colors ${inactiveColor} ${hoverColor} md:hidden`} title="Toggle lyrics"><PiMicrophone className={`h-6 w-6 transition-colors ${lyricsVisible ? activeColor : ''}`} /></button>
-                        <div className="hidden md:flex items-center gap-4">
-                            {/* Desktop only bottom controls can go here if needed */}
-                        </div>
                     </div>
                 </div>
             </div>

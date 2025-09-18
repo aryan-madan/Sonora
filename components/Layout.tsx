@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useMusic } from '../contexts/Music';
 import { Song } from '../types';
 import { 
@@ -611,13 +611,73 @@ const Player = () => {
         volume, setVolume, isMuted, toggleMute, showShowcase, showQueue, hideQueue, isQueueVisible,
         likedSongs, likeSong, isShuffle, toggleShuffle, repeatMode, toggleRepeatMode
     } = useMusic();
+    const progressBarRef = useRef<HTMLDivElement>(null);
+    const volumeBarRef = useRef<HTMLDivElement>(null);
 
-    const handleProgressBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!currentSong || progress.duration === 0) return;
-        const rect = e.currentTarget.getBoundingClientRect();
-        const clickX = e.clientX - rect.left;
-        const percentage = clickX / rect.width;
-        seek(progress.duration * percentage);
+    const handleProgressBarStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        const slider = progressBarRef.current;
+        if (!slider || !currentSong || progress.duration === 0) return;
+
+        const handleChange = (clientX: number) => {
+            if (!slider) return;
+            const rect = slider.getBoundingClientRect();
+            const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+            seek(progress.duration * percentage);
+        };
+
+        const initialClientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        handleChange(initialClientX);
+
+        const onMove = (moveEvent: MouseEvent | TouchEvent) => {
+            const moveClientX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX;
+            handleChange(moveClientX);
+        };
+
+        const onEnd = () => {
+            window.removeEventListener('mousemove', onMove as any);
+            window.removeEventListener('mouseup', onEnd);
+            window.removeEventListener('touchmove', onMove as any);
+            window.removeEventListener('touchend', onEnd);
+        };
+
+        window.addEventListener('mousemove', onMove as any);
+        window.addEventListener('mouseup', onEnd);
+        window.addEventListener('touchmove', onMove as any);
+        window.addEventListener('touchend', onEnd);
+    };
+
+    const handleVolumeBarStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        const slider = volumeBarRef.current;
+        if (!slider) return;
+
+        const handleChange = (clientX: number) => {
+            if (!slider) return;
+            const rect = slider.getBoundingClientRect();
+            const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+            setVolume(percentage);
+        };
+        
+        const initialClientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        handleChange(initialClientX);
+
+        const onMove = (moveEvent: MouseEvent | TouchEvent) => {
+            const moveClientX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX;
+            handleChange(moveClientX);
+        };
+
+        const onEnd = () => {
+            window.removeEventListener('mousemove', onMove as any);
+            window.removeEventListener('mouseup', onEnd);
+            window.removeEventListener('touchmove', onMove as any);
+            window.removeEventListener('touchend', onEnd);
+        };
+        
+        window.addEventListener('mousemove', onMove as any);
+        window.addEventListener('mouseup', onEnd);
+        window.addEventListener('touchmove', onMove as any);
+        window.addEventListener('touchend', onEnd);
     };
 
     if (!currentSong) {
@@ -665,9 +725,6 @@ const Player = () => {
                 
                 <div className="flex items-center justify-end gap-1 md:gap-4 w-1/3 md:flex-1">
                     <div className="flex md:hidden items-center justify-end gap-3">
-                        <button onClick={() => likeSong(currentSong)} className="text-text-secondary dark:text-dark-text-secondary transition-colors p-1">
-                           {isLiked ? <PiHeartFill className="h-6 w-6 text-primary dark:text-dark-primary" /> : <PiHeart className="h-6 w-6" />}
-                        </button>
                         <button onClick={showShowcase} className="text-text-secondary dark:text-dark-text-secondary transition-colors p-1" title="Show lyrics">
                             <PiMicrophone className="h-6 w-6" />
                         </button>
@@ -680,10 +737,12 @@ const Player = () => {
                         <span className="text-xs w-10 text-center text-text-secondary dark:text-dark-text-secondary">
                             {formatDuration(progress.currentTime)}
                         </span>
-                        <div className="w-24 h-1 bg-gray-200 dark:bg-dark-border-color rounded-full cursor-pointer group" onClick={(e) => {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setVolume(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)));
-                        }}>
+                        <div
+                            ref={volumeBarRef}
+                            className="w-24 h-1 bg-gray-200 dark:bg-dark-border-color rounded-full cursor-pointer group"
+                            onMouseDown={handleVolumeBarStart}
+                            onTouchStart={handleVolumeBarStart}
+                        >
                             <div className="h-full bg-text-primary dark:bg-dark-primary rounded-full relative" style={{ width: `${isMuted ? 0 : volume * 100}%` }}>
                                 <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-text-primary dark:bg-dark-primary rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
                             </div>
@@ -703,7 +762,12 @@ const Player = () => {
                     </div>
                 </div>
             </div>
-             <div className="absolute -top-px left-0 w-full h-0.5 bg-gray-200 dark:bg-dark-border-color group cursor-pointer" onClick={handleProgressBarClick}>
+             <div
+                ref={progressBarRef}
+                className="absolute -top-px left-0 w-full h-0.5 bg-gray-200 dark:bg-dark-border-color group cursor-pointer"
+                onMouseDown={handleProgressBarStart}
+                onTouchStart={handleProgressBarStart}
+            >
                 <div className="h-full bg-primary dark:bg-dark-primary relative" style={{ width: `${progressPercentage}%` }}>
                     <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-primary dark:bg-dark-primary rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 </div>
